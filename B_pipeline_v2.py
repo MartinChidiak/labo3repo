@@ -61,6 +61,9 @@ DF_09_DEMAND_GROWTH_RATE_DIFF_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '09_dem
 DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '10_total_tn_per_product.pkl')
 DF_11_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11_lags.pkl')
 
+# Path for the external list of product IDs
+LISTADO_IDS_PATH = os.path.join(GCS_BUCKET_PATH, 'ListadoIDS.txt')
+
 PREDICTION_PERIOD = 202002
 PREDICTION_DATE = pd.to_datetime(str(PREDICTION_PERIOD), format='%Y%m').to_period('M')
 LAST_HISTORICAL_PERIOD = 201912
@@ -281,14 +284,61 @@ if __name__ == "__main__":
         raise RuntimeError("Initial pipeline steps failed to produce the data needed for feature engineering.")
     if not pd.api.types.is_datetime64_any_dtype(df_pre_fe['fecha']):
         df_pre_fe['fecha'] = pd.to_datetime(df_pre_fe['fecha'])
+
     print(f"\nSeparating raw data for Training (up to {LAST_HISTORICAL_PERIOD}) and Prediction ({PREDICTION_PERIOD})")
     df_historical_raw = df_pre_fe[df_pre_fe['fecha'] <= pd.to_datetime(str(LAST_HISTORICAL_PERIOD), format='%Y%m')].copy()
-    unique_combinations = df_historical_raw[['customer_id', 'product_id']].drop_duplicates().copy()
-    df_predict_raw = unique_combinations.copy()
+
+    # 1. Obtener las combinaciones únicas customer_id-product_id históricas
+    original_unique_customer_product_pairs = df_historical_raw[['customer_id', 'product_id']].drop_duplicates().copy()
+    
+    # 2. Cargar el listado externo de product_ids
+    truly_new_product_ids = np.array([])
+    try:
+        external_product_ids_df = pd.read_csv(LISTADO_IDS_PATH, delimiter='\t')
+        if 'product_id' in external_product_ids_df.columns:
+            new_external_product_ids = external_product_ids_df['product_id'].unique()
+            # Filtrar los product_ids que ya están en los datos históricos
+            historical_product_ids_only = original_unique_customer_product_pairs['product_id'].unique()
+            truly_new_product_ids = np.setdiff1d(new_external_product_ids, historical_product_ids_only)
+            if len(truly_new_product_ids) > 0:
+                print(f"Found {len(truly_new_product_ids)} truly new product_ids in {LISTADO_IDS_PATH} not present historically.")
+            else:
+                print(f"No truly new product_ids found in {LISTADO_IDS_PATH} that were not already in historical data.")
+        else:
+            print(f"Warning: 'product_id' column not found in {LISTADO_IDS_PATH}. No external product IDs added.")
+    except (FileNotFoundError, pd.errors.EmptyDataError) as e:
+        print(f"Warning: Could not load or parse {LISTADO_IDS_PATH} ({e}). No external product IDs added.")
+    except Exception as e:
+        print(f"An unexpected error occurred while processing {LISTADO_IDS_PATH}: {e}. No external product IDs added.")
+
+    # 3. Si hay nuevos product_ids, generar combinaciones con todos los customer_ids históricos
+    if len(truly_new_product_ids) > 0:
+        all_historical_customer_ids = df_historical_raw['customer_id'].unique()
+        
+        # Crear un DataFrame de combinaciones nuevas
+        # pd.MultiIndex.from_product es eficiente para crear el producto cartesiano
+        new_combinations_index = pd.MultiIndex.from_product(
+            [all_historical_customer_ids, truly_new_product_ids],
+            names=['customer_id', 'product_id']
+        )
+        new_combinations_df = new_combinations_index.to_frame(index=False)
+        
+        # 4. Concatenar las combinaciones históricas originales con las nuevas
+        final_combinations_for_prediction = pd.concat([original_unique_customer_product_pairs, new_combinations_df]).drop_duplicates().reset_index(drop=True)
+        print(f"Total combinations for prediction (historical + new external products): {final_combinations_for_prediction.shape[0]}")
+    else:
+        final_combinations_for_prediction = original_unique_customer_product_pairs.copy()
+        print(f"Total combinations for prediction (historical only): {final_combinations_for_prediction.shape[0]}")
+
+
+    # Crear df_predict_raw usando las combinaciones finales
+    df_predict_raw = final_combinations_for_prediction.copy()
     df_predict_raw['fecha'] = pd.to_datetime(str(PREDICTION_PERIOD), format='%Y%m')
     df_predict_raw['periodo'] = PREDICTION_PERIOD
+
     print(f"Historical raw data shape (up to {LAST_HISTORICAL_PERIOD}): {df_historical_raw.shape}")
     print(f"Predict raw data shape (for {PREDICTION_PERIOD}): {df_predict_raw.shape}")
+    
     print(f"\nCalculating target '{FUTURE_TARGET}' on historical data...")
     df_historical_raw = df_historical_raw.sort_values(by=['customer_id', 'product_id', 'fecha'])
     df_historical_raw[FUTURE_TARGET] = df_historical_raw.groupby(['customer_id', 'product_id'])[TARGET].shift(-TARGET_SHIFT)
