@@ -191,12 +191,12 @@ feature_engineering_steps_v2 = [
         "description": "Add exponential moving average features",
         "params": {}
     },
-    {
-        "func": add_trend_features,
-        "checkpoint": DF_14_ADD_TREND_FEATURES_CHECKPOINT,
-        "description": "Add trend features",
-        "params": {}
-    },
+    # {
+    #     "func": add_trend_features,
+    #     "checkpoint": DF_14_ADD_TREND_FEATURES_CHECKPOINT,
+    #     "description": "Add trend features",
+    #     "params": {}
+    # },
     {
         "func": add_difference_features,
         "checkpoint": DF_15_ADD_DIFFERENCE_FEATURES_CHECKPOINT,
