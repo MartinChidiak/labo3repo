@@ -6,14 +6,32 @@ import nbformat
 import numpy as np
 import os
 
-def cargar_y_combinar_datos():
-    # Cargar archivos
-    sell_in = pd.read_csv(SELL_IN_PATH, delimiter='\t')
-    productos = pd.read_csv(PRODUCTOS_PATH, delimiter='\t')
-    stocks = pd.read_csv(STOCKS_PATH, delimiter='\t')
-    #drop duplicates in productos
+GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
+
+SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
+PRODUCTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_productos.txt')
+STOCKS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_stocks.txt')  
+EVENTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'eventos_macro_arg_2017_2019.txt')  
+CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints')
+
+
+# def cargar_y_combinar_datos():
+#     # Cargar archivos
+#     sell_in = pd.read_csv(SELL_IN_PATH, delimiter='\t')
+#     productos = pd.read_csv(PRODUCTOS_PATH, delimiter='\t')
+#     stocks = pd.read_csv(STOCKS_PATH, delimiter='\t')
+#     #drop duplicates in productos
+#     productos = productos.drop_duplicates(subset=['product_id'])
+#     ## Unir Datasets
+#     df = sell_in.merge(stocks, on=['periodo', 'product_id'], how='left')
+#     df = df.merge(productos, on='product_id', how='left')
+#     return df
+
+def cargar_y_combinar_datos(sell_in_path, productos_path, stocks_path):
+    sell_in = pd.read_csv(sell_in_path, delimiter='\t')
+    productos = pd.read_csv(productos_path, delimiter='\t')
+    stocks = pd.read_csv(stocks_path, delimiter='\t')
     productos = productos.drop_duplicates(subset=['product_id'])
-    ## Unir Datasets
     df = sell_in.merge(stocks, on=['periodo', 'product_id'], how='left')
     df = df.merge(productos, on='product_id', how='left')
     return df
