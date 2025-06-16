@@ -260,8 +260,14 @@ def generar_lags_por_combinacion(df, columnas_para_lag=None, num_lags=12, **para
     return df_con_lags
 
 def add_total_tn_per_product(df, **params):
-    # Calcula la suma global de tn por producto
-    total_tn = df.groupby('product_id')['tn'].sum().reset_index(name='total_tn_per_product')
-    # Une la suma a cada fila del dataframe original
-    df = df.merge(total_tn, on='product_id', how='left')
+    # Ordena por producto y fecha para asegurar el orden temporal
+    df = df.sort_values(['product_id', 'fecha'])
+    # Suma acumulada de tn por producto, SIN incluir la fila actual (shift(1))
+    df['total_tn_per_product_to_date'] = (
+        df.groupby('product_id')['tn']
+        .cumsum()
+        .shift(1)
+    )
+    # Para la primera aparición de cada producto, el valor será NaN; lo rellenamos con 0
+    df['total_tn_per_product_to_date'] = df['total_tn_per_product_to_date'].fillna(0)
     return df

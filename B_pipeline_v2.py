@@ -13,6 +13,25 @@ def save_checkpoint_async(df, path):
     thread.start()
     return thread
 
+# Archivo	Propósito
+# df_inicial.pkl	Datos combinados iniciales
+# df_con_fecha.pkl	Datos con columna de fecha
+# df_merged_combinations.pkl	Combinaciones mergeadas con datos originales
+# df_filled.pkl	Datos con info de producto completada
+# 01_brand_loyalty.pkl	Feature: lealtad de marca
+# 02_customer_category_avg_tn.pkl	Feature: promedio tn por cliente/categoría
+# 03_customer_category_count.pkl	Feature: conteo de categorías por cliente
+# 04_macro_event_flag.pkl	Feature: bandera de evento macroeconómico
+# 05_tn_percentage_change.pkl	Feature: cambio porcentual de tn
+# 06_months_since_last_purchase.pkl	Feature: meses desde última compra
+# 07_product_moving_avg.pkl	Feature: promedio móvil de tn
+# 08_weighted_tn_sum.pkl	Feature: suma ponderada de tn
+# 09_demand_growth_rate_diff.pkl	Feature: diff. tasa de crecimiento de demanda
+# 10_total_tn_per_product.pkl	Feature: suma global de tn por producto
+# 11_lags.pkl	Features: columnas de lags
+# df_train_final_featured.pkl	DataFrame final de entrenamiento
+# df_predict_final_featured.pkl	DataFrame final de predicción
+
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 
 SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
@@ -272,6 +291,7 @@ if __name__ == "__main__":
     df_historical_raw = df_historical_raw.sort_values(by=['customer_id', 'product_id', 'fecha'])
     df_historical_raw[FUTURE_TARGET] = df_historical_raw.groupby(['customer_id', 'product_id'])[TARGET].shift(-TARGET_SHIFT)
     df_train_final_pre_fe = df_historical_raw[df_historical_raw[FUTURE_TARGET].notna()].copy()
+    print("Shape de df_train_final_pre_fe:", df_train_final_pre_fe.shape)
     df_historical_full_pre_fe = df_historical_raw.copy()
     df_historical_full_pre_fe = df_historical_full_pre_fe.drop(columns=[FUTURE_TARGET])
     print(f"Initial Train Final data shape (historical data excluding last {TARGET_SHIFT} periods): {df_train_final_pre_fe.shape}")
