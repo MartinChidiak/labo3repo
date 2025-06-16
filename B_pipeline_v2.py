@@ -45,6 +45,25 @@ TARGET = 'tn'
 TARGET_SHIFT = 2
 FUTURE_TARGET = f'{TARGET}_future'
 
+
+from A_funciones_pipeline_v2 import (
+    cargar_y_combinar_datos,
+    transformar_periodo,
+    generar_combinaciones_por_periodo,
+    merge_with_original_data,
+    fill_missing_product_info,
+    calculate_brand_loyalty,
+    add_customer_category_avg_tn,
+    calculate_product_moving_avg,
+    add_macro_event_flag,
+    calculate_tn_percentage_change,
+    calculate_months_since_last_purchase,
+    calculate_customer_category_count,
+    calculate_weighted_tn_sum,
+    calculate_demand_growth_rate_diff,
+    generar_lags_por_combinacion,
+)
+
 # --- Feature engineering steps ---
 feature_engineering_steps_v2 = [
     {
