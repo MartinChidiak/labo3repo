@@ -74,6 +74,7 @@ FUTURE_TARGET = f'{TARGET}_future'
 
 from A_funciones_pipeline_v2 import (
     cargar_y_combinar_datos,
+    optimize_dtypes,
     transformar_periodo,
     generar_combinaciones_por_periodo,
     merge_with_original_data,
@@ -237,6 +238,7 @@ def run_initial_pipeline_steps_v2():
         if step_func == cargar_y_combinar_datos:
             if not skip_step_execution:
                 df_current = step_func(SELL_IN_PATH, PRODUCTOS_PATH, STOCKS_PATH)
+                df_current = optimize_dtypes(df_current)
         elif step_func == transformar_periodo:
             if not skip_step_execution:
                 df_current = step_func(df_current)

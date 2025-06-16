@@ -23,6 +23,26 @@ def cargar_y_combinar_datos(sell_in_path, productos_path, stocks_path, **params)
     df = df.merge(productos, on='product_id', how='left')
     return df
 
+def optimize_dtypes(df):
+    for col, dtype in [
+        ('periodo', 'int32'),
+        ('customer_id', 'int32'),
+        ('product_id', 'int32'),
+        ('plan_precios_cuidados', 'uint8'),
+        ('cust_request_qty', 'float32'),
+        ('cust_request_tn', 'float32'),
+        ('tn', 'float32'),
+        ('stock_final', 'float32'),
+        ('sku_size', 'float32')
+    ]:
+        if col in df.columns:
+            df[col] = df[col].astype(dtype)
+    for col in ['cat1', 'cat2', 'cat3', 'brand']:
+        if col in df.columns:
+            df[col] = df[col].astype('category')
+    return df
+
+
 def transformar_periodo(df, **params):
     df['fecha'] = pd.to_datetime(df['periodo'].astype(str), format='%Y%m')
     return df
@@ -77,6 +97,9 @@ def merge_with_original_data(combinations_df, original_df, **params):
         on=['customer_id', 'product_id', 'fecha'],
         how='left'
     )
+    # Rellenar NaNs numéricos con 0
+    num_cols = df_completo_merged.select_dtypes(include=[np.number]).columns
+    df_completo_merged[num_cols] = df_completo_merged[num_cols].fillna(0)
     return df_completo_merged
 
 def fill_missing_product_info(df_merged, products_df=None, **params):
