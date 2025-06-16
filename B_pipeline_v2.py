@@ -4,8 +4,14 @@ import pandas as pd
 import os
 import numpy as np
 import time
+import threading
 
-from A_funciones_pipeline_v2 import *
+def save_checkpoint_async(df, path):
+    def save():
+        df.to_pickle(path)
+    thread = threading.Thread(target=save)
+    thread.start()
+    return thread
 
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 
@@ -33,6 +39,7 @@ DF_06_MONTHS_SINCE_LAST_PURCHASE_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '06_
 DF_07_PRODUCT_MOVING_AVG_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '07_product_moving_avg.pkl')
 DF_08_WEIGHTED_TN_SUM_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '08_weighted_tn_sum.pkl')
 DF_09_DEMAND_GROWTH_RATE_DIFF_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '09_demand_growth_rate_diff.pkl')
+DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '10_total_tn_per_product.pkl')
 DF_11_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11_lags.pkl')
 
 PREDICTION_PERIOD = 202002
@@ -61,7 +68,9 @@ from A_funciones_pipeline_v2 import (
     calculate_customer_category_count,
     calculate_weighted_tn_sum,
     calculate_demand_growth_rate_diff,
+    add_total_tn_per_product,
     generar_lags_por_combinacion,
+
 )
 
 # --- Feature engineering steps ---
@@ -121,6 +130,18 @@ feature_engineering_steps_v2 = [
         "params": {}
     },
     {
+        "func": calculate_product_moving_avg,
+        "checkpoint": DF_07_PRODUCT_MOVING_AVG_CHECKPOINT,
+        "description": "Calculate product moving average",
+        "params": {}
+    },
+    {
+        "func": add_total_tn_per_product,
+        "checkpoint": DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT,
+        "description": "Add total tn per product",
+        "params": {}
+    },
+    {
         "func": generar_lags_por_combinacion,
         "checkpoint": DF_11_LAGS_CHECKPOINT,
         "description": "Calculate lags",
@@ -132,6 +153,7 @@ def run_feature_engineering_steps_v2(df, steps):
     df_current = df.copy()
     start_step_index = 0
     latest_checkpoint_found = False
+    checkpoint_threads = [] 
     for i in range(len(steps) - 1, -1, -1):
         step = steps[i]
         if os.path.exists(step["checkpoint"]):
@@ -152,10 +174,12 @@ def run_feature_engineering_steps_v2(df, steps):
             elapsed = time.time() - start_time
             print(f"{step['description']} completed in {elapsed:.2f} seconds.")
             print(f"Saving checkpoint to {step['checkpoint']}")
-            df_current.to_pickle(step["checkpoint"])
+            checkpoint_threads.append(save_checkpoint_async(df_current, step["checkpoint"]))
         except Exception as e:
             print(f"Error during {step['description']}: {e}")
             raise
+    for t in checkpoint_threads:
+        t.join()
     return df_current
 
 # --- Initial pipeline steps (igual que antes, pero usando **params) ---
