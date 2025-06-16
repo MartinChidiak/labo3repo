@@ -26,12 +26,20 @@ from A_funciones_pipeline import (
 )
 
 # Define data paths (assuming script is run from Maestría/20- Laboratorio3/Data/)
-SELL_IN_PATH = 'sell-in.txt'
-PRODUCTOS_PATH = 'tb_productos.txt'
-STOCKS_PATH = 'tb_stocks.txt'
+#SELL_IN_PATH = 'sell-in.txt'
+#PRODUCTOS_PATH = 'tb_productos.txt'
+#STOCKS_PATH = 'tb_stocks.txt'
+
+GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
+
+SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
+PRODUCTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_productos.txt')
+STOCKS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_stocks.txt')  
+CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints')
 
 # Define checkpoint paths
-CHECKPOINTS_DIR = r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\checkpoints' # Updated to absolute path
+#CHECKPOINTS_DIR = r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\checkpoints' # Updated to absolute path
+
 os.makedirs(CHECKPOINTS_DIR, exist_ok=True)
 
 # Intermediate checkpoints (up to the split point)
