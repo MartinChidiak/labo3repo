@@ -174,6 +174,9 @@ def run_initial_pipeline_steps():
                  print(f"Skipping execution of step {i + 1} ('{description}') as df_current loaded from checkpoint.")
              else:
                  if df_current is None: raise ValueError("df_current is None before transformar_periodo")
+                 print("Antes de transformar_periodo:")
+                 print(df_current.columns)
+                 print(df_current.head())
                  df_current = step_func(df_current)
 
         elif step_func == generar_combinaciones_por_periodo:
