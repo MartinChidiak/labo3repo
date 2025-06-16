@@ -5,6 +5,15 @@ import os
 import numpy as np
 import time
 
+GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
+
+SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
+PRODUCTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_productos.txt')
+STOCKS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_stocks.txt')  
+EVENTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'eventos_macro_arg_2017_2019.txt')  
+CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints')
+
+
 # Import functions from the helper script
 from A_funciones_pipeline import (
     cargar_y_combinar_datos,
@@ -30,13 +39,7 @@ from A_funciones_pipeline import (
 #PRODUCTOS_PATH = 'tb_productos.txt'
 #STOCKS_PATH = 'tb_stocks.txt'
 
-GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 
-SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
-PRODUCTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_productos.txt')
-STOCKS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_stocks.txt')  
-EVENTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'eventos_macro_arg_2017_2019.txt')  
-CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints')
 
 # Define checkpoint paths
 #CHECKPOINTS_DIR = r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\checkpoints' # Updated to absolute path
