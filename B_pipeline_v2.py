@@ -60,7 +60,14 @@ DF_08_WEIGHTED_TN_SUM_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '08_weighted_tn
 DF_09_DEMAND_GROWTH_RATE_DIFF_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '09_demand_growth_rate_diff.pkl')
 DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '10_total_tn_per_product.pkl')
 DF_11_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11_lags.pkl')
-DF_12_ADD_PIVOT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '12_add_pivot_features.pkl')
+DF_12_ADD_ROLLING_STATISTICS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '12_add_rolling_statistics_features.pkl')
+DF_13_ADD_EXPONENTIAL_MOVING_AVERAGE_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '13_add_exponential_moving_average_features.pkl')
+DF_14_ADD_TREND_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '14_add_trend_features.pkl')
+DF_15_ADD_DIFFERENCE_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '15_add_difference_features.pkl')
+DF_16_ADD_TOTAL_CATEGORY_SALES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '16_add_total_category_sales.pkl')
+DF_17_ADD_CUSTOMER_PRODUCT_TOTAL_WEIGHTS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '17_add_customer_product_total_weights.pkl')
+DF_18_ADD_INTERACTION_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '18_add_interaction_features.pkl')
+
 
 # Path for the external list of product IDs
 LISTADO_IDS_PATH = os.path.join(GCS_BUCKET_PATH, 'ListadoIDS.txt')
@@ -94,7 +101,13 @@ from A_funciones_pipeline_v2 import (
     calculate_demand_growth_rate_diff,
     add_total_tn_per_product,
     generar_lags_por_combinacion,
-    add_product_tn_pivot_features,
+    add_rolling_statistics_features,
+    add_exponential_moving_average_features,
+    add_trend_features,
+    add_difference_features,
+    add_total_category_sales,
+    add_customer_product_total_weights,
+    add_interaction_features,
 
 )
 
@@ -167,9 +180,45 @@ feature_engineering_steps_v2 = [
         "params": {"columnas_para_lag": LAG_COLUMNS, "num_lags": NUM_LAGS}
     },
     {
-        "func": add_product_tn_pivot_features,
-        "checkpoint": DF_12_ADD_PIVOT_CHECKPOINT,
-        "description": "Add product tn pivot features",
+        "func": add_rolling_statistics_features,
+        "checkpoint": DF_12_ADD_ROLLING_STATISTICS_CHECKPOINT,
+        "description": "Add rolling statistics features",
+        "params": {}
+    },
+    {
+        "func": add_exponential_moving_average_features,
+        "checkpoint": DF_13_ADD_EXPONENTIAL_MOVING_AVERAGE_FEATURES_CHECKPOINT,
+        "description": "Add exponential moving average features",
+        "params": {}
+    },
+    {
+        "func": add_trend_features,
+        "checkpoint": DF_14_ADD_TREND_FEATURES_CHECKPOINT,
+        "description": "Add trend features",
+        "params": {}
+    },
+    {
+        "func": add_difference_features,
+        "checkpoint": DF_15_ADD_DIFFERENCE_FEATURES_CHECKPOINT,
+        "description": "Add difference features",
+        "params": {}
+    },
+    {
+        "func": add_total_category_sales,
+        "checkpoint": DF_16_ADD_TOTAL_CATEGORY_SALES_CHECKPOINT,
+        "description": "Add total category sales features",
+        "params": {}
+    },
+    {
+        "func": add_customer_product_total_weights,
+        "checkpoint": DF_17_ADD_CUSTOMER_PRODUCT_TOTAL_WEIGHTS_CHECKPOINT,
+        "description": "Add customer and product total weights",
+        "params": {}
+    },
+    {
+        "func": add_interaction_features,
+        "checkpoint": DF_18_ADD_INTERACTION_FEATURES_CHECKPOINT,
+        "description": "Add interaction features (e.g., product of tn and sku_size)",
         "params": {}
     },
 ]

@@ -295,34 +295,203 @@ def add_total_tn_per_product(df, **params):
     df['total_tn_per_product_to_date'] = df['total_tn_per_product_to_date'].fillna(0)
     return df
 
-def add_product_tn_pivot_features(df, **params):
+def add_rolling_statistics_features(df, columns=None, windows=None, stats=None, **params):
     """
-    Agrega columnas al DataFrame donde cada columna representa un product_id
-    y contiene la suma de 'tn' para ese producto por fecha.
+    Calcula varias estadísticas de ventana móvil para columnas especificadas.
+    Por defecto, calcula la media y la desviación estándar para 'tn' con ventanas de 3 y 6.
     """
     df_copy = df.copy()
+    df_copy = df_copy.sort_values(by=['product_id', 'customer_id', 'fecha'])
 
-    # Asegurarse de que 'fecha' sea de tipo datetime si es PeriodDtype para la agregación
-    if isinstance(df_copy['fecha'].dtype, pd.PeriodDtype):
-        df_copy['fecha_temp'] = df_copy['fecha'].dt.to_timestamp()
-    else:
-        df_copy['fecha_temp'] = df_copy['fecha']
+    columns = params.get("rolling_columns", columns if columns is not None else ['tn'])
+    windows = params.get("rolling_windows", windows if windows is not None else [3, 6])
+    stats = params.get("rolling_stats", stats if stats is not None else ['mean', 'std'])
 
-    # Calcular la suma de tn por fecha y product_id
-    tn_por_producto_fecha = df_copy.groupby(['fecha_temp', 'product_id'])['tn'].sum().reset_index()
+    grouped = df_copy.groupby(['product_id', 'customer_id'])
 
-    # Pivotar la tabla para que los product_id sean columnas
-    pivot_df = tn_por_producto_fecha.pivot(index='fecha_temp', columns='product_id', values='tn').fillna(0)
+    for col in columns:
+        if col not in df_copy.columns:
+            warnings.warn(f"Advertencia: La columna '{col}' no se encontró en el DataFrame para estadísticas de ventana móvil. Saltando.")
+            continue
+        for window in windows:
+            rolling_window = grouped[col].rolling(window=window, min_periods=1)
+            for stat in stats:
+                feature_name = f'{col}_rolling_{stat}_{window}m'
+                if stat == 'mean':
+                    df_copy[feature_name] = rolling_window.mean().reset_index(level=[0,1], drop=True)
+                elif stat == 'std':
+                    df_copy[feature_name] = rolling_window.std().reset_index(level=[0,1], drop=True)
+                elif stat == 'min':
+                    df_copy[feature_name] = rolling_window.min().reset_index(level=[0,1], drop=True)
+                elif stat == 'max':
+                    df_copy[feature_name] = rolling_window.max().reset_index(level=[0,1], drop=True)
+                elif stat == 'median':
+                    df_copy[feature_name] = rolling_window.median().reset_index(level=[0,1], drop=True)
+                elif stat == 'skew':
+                    df_copy[feature_name] = rolling_window.skew().reset_index(level=[0,1], drop=True)
+                elif stat == 'zscore':
+                    rolling_mean = rolling_window.mean().reset_index(level=[0,1], drop=True)
+                    rolling_std = rolling_window.std().reset_index(level=[0,1], drop=True)
+                    df_copy[feature_name] = (df_copy[col] - rolling_mean) / (rolling_std + 1e-6)
+                else:
+                    warnings.warn(f"Estadística '{stat}' no soportada para ventana móvil. Saltando.")
+    return df_copy
 
-    # Renombrar las columnas para mayor claridad
-    pivot_df.columns = [f'tn_sum_prod_{col}' for col in pivot_df.columns]
+def add_exponential_moving_average_features(df, columns=None, spans=None, **params):
+    """
+    Calcula la media móvil exponencial (EMA) para columnas específicas.
+    Por defecto, calcula EMA para 'tn' con spans de 3 y 6.
+    """
+    df_copy = df.copy()
+    df_copy = df_copy.sort_values(by=['product_id', 'customer_id', 'fecha'])
 
-    # Unir el DataFrame pivotado con el original
-    df_merged = pd.merge(df, pivot_df, left_on='fecha', right_on='fecha_temp', how='left')
+    columns = params.get("ema_columns", columns if columns is not None else ['tn'])
+    spans = params.get("ema_spans", spans if spans is not None else [3, 6])
 
-    # Eliminar la columna temporal
-    df_merged = df_merged.drop(columns=['fecha_temp'])
+    grouped = df_copy.groupby(['product_id', 'customer_id'])
 
-    # Rellenar los posibles NaN (para combinaciones donde no había tn pero sí la combinación)
-    # Esto ya se cubre con el fillna(0) después del pivot
-    return df_merged
+    for col in columns:
+        if col not in df_copy.columns:
+            warnings.warn(f"Advertencia: La columna '{col}' no se encontró en el DataFrame para EMA. Saltando.")
+            continue
+        for span in spans:
+            df_copy[f'{col}_ema_{span}m'] = grouped[col].transform(
+                lambda x: x.ewm(span=span, adjust=False).mean()
+            )
+    return df_copy
+
+def add_trend_features(df, columns=None, windows=None, **params):
+    """
+    Calcula la tendencia (pendiente de regresión lineal) sobre una ventana móvil.
+    Por defecto, calcula la tendencia para 'tn' con ventanas de 3 y 6.
+    Requiere `scipy.stats.linregress`.
+    """
+    df_copy = df.copy()
+    df_copy = df_copy.sort_values(by=['product_id', 'customer_id', 'fecha'])
+
+    columns = params.get("trend_columns", columns if columns is not None else ['tn'])
+    windows = params.get("trend_windows", windows if windows is not None else [3, 6])
+
+    def calculate_rolling_trend(series):
+        if len(series) < 2: # Need at least 2 points for a line
+            return np.nan
+        # Filter out NaN values, as linregress can't handle them
+        valid_series = series.dropna()
+        if len(valid_series) < 2:
+            return np.nan
+        return linregress(np.arange(len(valid_series)), valid_series)[0]
+
+    grouped = df_copy.groupby(['product_id', 'customer_id'])
+
+    for col in columns:
+        if col not in df_copy.columns:
+            warnings.warn(f"Advertencia: La columna '{col}' no se encontró en el DataFrame para tendencia. Saltando.")
+            continue
+        for window in windows:
+            df_copy[f'{col}_trend_{window}m'] = grouped[col].transform(
+                lambda x: x.rolling(window=window, min_periods=2).apply(calculate_rolling_trend, raw=False)
+            )
+    return df_copy
+
+def add_difference_features(df, columns=None, periods=None, **params):
+    """
+    Calcula la diferencia entre el valor actual y el valor de 'n' períodos atrás.
+    Por defecto, calcula la diferencia para 'tn' con períodos de 1 y 3.
+    """
+    df_copy = df.copy()
+    df_copy = df_copy.sort_values(by=['product_id', 'customer_id', 'fecha'])
+
+    columns = params.get("diff_columns", columns if columns is not None else ['tn'])
+    periods = params.get("diff_periods", periods if periods is not None else [1, 3])
+
+    grouped = df_copy.groupby(['product_id', 'customer_id'])
+
+    for col in columns:
+        if col not in df_copy.columns:
+            warnings.warn(f"Advertencia: La columna '{col}' no se encontró en el DataFrame para diferencias. Saltando.")
+            continue
+        for period in periods:
+            df_copy[f'{col}_diff_{period}m'] = grouped[col].diff(period)
+    return df_copy
+
+def add_total_category_sales(df, categories=None, measure_col='tn', div_by_row=False, **params):
+    """
+    Calcula la suma total de una columna de medida (ej. 'tn') por fecha y categoría.
+    Opcionalmente, divide el valor de la fila por la suma total de la categoría en esa fecha.
+    Por defecto, usa 'tn' y 'cat1'.
+    """
+    df_copy = df.copy()
+    df_copy = df_copy.sort_values(['fecha'])
+
+    categories = params.get("category_cols", categories if categories is not None else ['cat1', 'cat2', 'cat3'])
+    measure_col = params.get("measure_column", measure_col)
+    div_by_row = params.get("divide_by_row", div_by_row)
+
+    if measure_col not in df_copy.columns:
+        raise ValueError(f"La columna de medida '{measure_col}' no se encontró en el DataFrame.")
+
+    for cat_col in categories:
+        if cat_col not in df_copy.columns:
+            warnings.warn(f"Advertencia: La columna de categoría '{cat_col}' no se encontró. Saltando.")
+            continue
+        feature_name = f"{measure_col}_{cat_col}_vendidas"
+        df_copy[feature_name] = (
+            df_copy.groupby(['fecha', cat_col])[measure_col]
+            .transform('sum')
+        )
+        if div_by_row:
+            df_copy[feature_name] = 1000 * df_copy[measure_col] / (df_copy[feature_name] + 1e-6) # Add epsilon to avoid division by zero
+    return df_copy
+
+def add_customer_product_total_weights(df, **params):
+    """
+    Calcula el peso relativo de las ventas de un cliente y un producto
+    en comparación con las ventas totales de esa fecha.
+    """
+    df_copy = df.copy()
+    df_copy = df_copy.sort_values(['fecha'])
+
+    # Peso por cliente
+    df_copy['tn_customer_vendidas'] = (
+        df_copy.groupby(['fecha', 'customer_id'])['tn']
+        .transform('sum')
+    )
+    df_copy['tn_total_vendidas_fecha'] = (
+        df_copy.groupby('fecha')['tn']
+        .transform('sum')
+    )
+    df_copy['customer_weight'] = df_copy['tn_customer_vendidas'] / (df_copy['tn_total_vendidas_fecha'] + 1e-6)
+
+    # Peso por producto
+    df_copy['tn_product_vendidas'] = (
+        df_copy.groupby(['fecha', 'product_id'])['tn']
+        .transform('sum')
+    )
+    df_copy['product_weight'] = df_copy['tn_product_vendidas'] / (df_copy['tn_total_vendidas_fecha'] + 1e-6)
+
+    # Eliminar columnas intermedias si no se necesitan en el resultado final
+    df_copy = df_copy.drop(columns=['tn_customer_vendidas', 'tn_total_vendidas_fecha', 'tn_product_vendidas'])
+    return df_copy
+
+def add_interaction_features(df, column_pairs=None, interaction_type='product', **params):
+    """
+    Crea características de interacción entre pares de columnas (multiplicación o división).
+    Por defecto, crea interacciones de producto para ('tn', 'sku_size').
+    """
+    df_copy = df.copy()
+    
+    column_pairs = params.get("interaction_column_pairs", column_pairs if column_pairs is not None else [('tn', 'sku_size')])
+    interaction_type = params.get("interaction_type", interaction_type)
+
+    if interaction_type not in ['product', 'division']:
+        raise ValueError("El 'interaction_type' debe ser 'product' o 'division'.")
+
+    for col1, col2 in column_pairs:
+        if col1 not in df_copy.columns or col2 not in df_copy.columns:
+            warnings.warn(f"Advertencia: Una o ambas columnas '{col1}', '{col2}' no se encontraron para interacción. Saltando.")
+            continue
+        if interaction_type == 'product':
+            df_copy[f"{col1}_prod_{col2}"] = df_copy[col1] * df_copy[col2]
+        elif interaction_type == 'division':
+            df_copy[f"{col1}_div_{col2}"] = df_copy[col1] / (df_copy[col2] + 1e-6) # Evitar división por cero
+    return df_copy
