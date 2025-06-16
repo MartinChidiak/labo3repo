@@ -375,7 +375,7 @@ def calculate_product_moving_avg(df: pd.DataFrame) -> pd.DataFrame:
     return df_with_moving_avg
 
 
-def add_macro_event_flag(df, event_file_path=EVENTOS_PATH):
+def add_macro_event_flag(df, event_file_path):
     """
     Adds a boolean flag column indicating if a macro event occurred in the month
     of the 'fecha' column.
