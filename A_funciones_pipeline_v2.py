@@ -5,6 +5,8 @@ import nbformat
 import pandas as pd
 import numpy as np
 import os
+import warnings
+from scipy.stats import linregress
 
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 
