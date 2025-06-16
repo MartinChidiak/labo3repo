@@ -155,12 +155,6 @@ feature_engineering_steps_v2 = [
         "params": {}
     },
     {
-        "func": calculate_product_moving_avg,
-        "checkpoint": DF_07_PRODUCT_MOVING_AVG_CHECKPOINT,
-        "description": "Calculate product moving average",
-        "params": {}
-    },
-    {
         "func": add_total_tn_per_product,
         "checkpoint": DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT,
         "description": "Add total tn per product",
