@@ -102,7 +102,7 @@ feature_engineering_steps = [
     (calculate_brand_loyalty, DF_01_BRAND_LOYALTY_CHECKPOINT, "Calculate brand loyalty", ()),
     (add_customer_category_avg_tn, DF_02_CUSTOMER_CATEGORY_AVG_TN_CHECKPOINT, "Add customer category average tn", ()),
     (calculate_customer_category_count, DF_03_CUSTOMER_CATEGORY_COUNT_CHECKPOINT, "Calculate customer category count", ()),
-    (add_macro_event_flag, DF_04_MACRO_EVENT_FLAG_CHECKPOINT, "Add macro event flag", ()),
+    (add_macro_event_flag, DF_04_MACRO_EVENT_FLAG_CHECKPOINT, "Add macro event flag", (EVENTOS_PATH,)),
     (calculate_tn_percentage_change, DF_05_TN_PERCENTAGE_CHANGE_CHECKPOINT, "Calculate tn percentage change", ()),
     (calculate_months_since_last_purchase, DF_06_MONTHS_SINCE_LAST_PURCHASE_CHECKPOINT, "Calculate months since last purchase", ()),
     (calculate_product_moving_avg, DF_07_PRODUCT_MOVING_AVG_CHECKPOINT, "Calculate product moving average", ()),
