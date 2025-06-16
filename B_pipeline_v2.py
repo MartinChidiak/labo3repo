@@ -60,6 +60,7 @@ DF_08_WEIGHTED_TN_SUM_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '08_weighted_tn
 DF_09_DEMAND_GROWTH_RATE_DIFF_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '09_demand_growth_rate_diff.pkl')
 DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '10_total_tn_per_product.pkl')
 DF_11_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11_lags.pkl')
+DF_12_ADD_PIVOT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '12_add_pivot_features.pkl')
 
 # Path for the external list of product IDs
 LISTADO_IDS_PATH = os.path.join(GCS_BUCKET_PATH, 'ListadoIDS.txt')
@@ -93,6 +94,7 @@ from A_funciones_pipeline_v2 import (
     calculate_demand_growth_rate_diff,
     add_total_tn_per_product,
     generar_lags_por_combinacion,
+    add_product_tn_pivot_features,
 
 )
 
@@ -169,6 +171,12 @@ feature_engineering_steps_v2 = [
         "checkpoint": DF_11_LAGS_CHECKPOINT,
         "description": "Calculate lags",
         "params": {"columnas_para_lag": LAG_COLUMNS, "num_lags": NUM_LAGS}
+    },
+    {
+        "func": add_product_tn_pivot_features,
+        "checkpoint": DF_12_ADD_PIVOT_CHECKPOINT,
+        "description": "Add product tn pivot features",
+        "params": {}
     },
 ]
 

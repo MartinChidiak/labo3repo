@@ -294,3 +294,35 @@ def add_total_tn_per_product(df, **params):
     # Para la primera aparición de cada producto, el valor será NaN; lo rellenamos con 0
     df['total_tn_per_product_to_date'] = df['total_tn_per_product_to_date'].fillna(0)
     return df
+
+def add_product_tn_pivot_features(df, **params):
+    """
+    Agrega columnas al DataFrame donde cada columna representa un product_id
+    y contiene la suma de 'tn' para ese producto por fecha.
+    """
+    df_copy = df.copy()
+
+    # Asegurarse de que 'fecha' sea de tipo datetime si es PeriodDtype para la agregación
+    if isinstance(df_copy['fecha'].dtype, pd.PeriodDtype):
+        df_copy['fecha_temp'] = df_copy['fecha'].dt.to_timestamp()
+    else:
+        df_copy['fecha_temp'] = df_copy['fecha']
+
+    # Calcular la suma de tn por fecha y product_id
+    tn_por_producto_fecha = df_copy.groupby(['fecha_temp', 'product_id'])['tn'].sum().reset_index()
+
+    # Pivotar la tabla para que los product_id sean columnas
+    pivot_df = tn_por_producto_fecha.pivot(index='fecha_temp', columns='product_id', values='tn').fillna(0)
+
+    # Renombrar las columnas para mayor claridad
+    pivot_df.columns = [f'tn_sum_prod_{col}' for col in pivot_df.columns]
+
+    # Unir el DataFrame pivotado con el original
+    df_merged = pd.merge(df, pivot_df, left_on='fecha', right_on='fecha_temp', how='left')
+
+    # Eliminar la columna temporal
+    df_merged = df_merged.drop(columns=['fecha_temp'])
+
+    # Rellenar los posibles NaN (para combinaciones donde no había tn pero sí la combinación)
+    # Esto ya se cubre con el fillna(0) después del pivot
+    return df_merged
