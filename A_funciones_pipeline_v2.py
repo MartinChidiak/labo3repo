@@ -374,14 +374,29 @@ def add_trend_features(df, columns=None, windows=None, **params):
     columns = params.get("trend_columns", columns if columns is not None else ['tn'])
     windows = params.get("trend_windows", windows if windows is not None else [3, 6])
 
-    def calculate_rolling_trend(series):
-        if len(series) < 2: # Need at least 2 points for a line
+    def calculate_rolling_trend(values):
+        # Filter out NaN values
+        valid_values = values[~np.isnan(values)]
+
+        if len(valid_values) < 2: # Need at least 2 points for a line
             return np.nan
-        # Filter out NaN values, as linregress can't handle them
-        valid_series = series.dropna()
-        if len(valid_series) < 2:
+        
+        x = np.arange(len(valid_values))
+        y = valid_values
+
+        # Calculate slope using the formula: m = (N * sum(xy) - sum(x) * sum(y)) / (N * sum(x^2) - (sum(x))^2)
+        N = len(x)
+        sum_x = np.sum(x)
+        sum_y = np.sum(y)
+        sum_xy = np.sum(x * y)
+        sum_x_squared = np.sum(x**2)
+
+        denominator = N * sum_x_squared - sum_x**2
+        if denominator == 0: # Avoid division by zero if all x values are the same
             return np.nan
-        return linregress(np.arange(len(valid_series)), valid_series)[0]
+        
+        slope = (N * sum_xy - sum_x * sum_y) / denominator
+        return slope
 
     grouped = df_copy.groupby(['product_id', 'customer_id'])
 
@@ -390,8 +405,9 @@ def add_trend_features(df, columns=None, windows=None, **params):
             warnings.warn(f"Advertencia: La columna '{col}' no se encontró en el DataFrame para tendencia. Saltando.")
             continue
         for window in windows:
+            # Change raw=False to raw=True to pass NumPy arrays directly for better performance
             df_copy[f'{col}_trend_{window}m'] = grouped[col].transform(
-                lambda x: x.rolling(window=window, min_periods=2).apply(calculate_rolling_trend, raw=False)
+                lambda x: x.rolling(window=window, min_periods=2).apply(calculate_rolling_trend, raw=True) 
             )
     return df_copy
 
