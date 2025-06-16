@@ -167,14 +167,14 @@ def run_initial_pipeline_steps():
             if skip_step_execution:
                  print(f"Skipping execution of step {i + 1} ('{description}') as df_current loaded from checkpoint.")
             else:
-                 df_current = step_func()
+                 df_current = step_func(SELL_IN_PATH, PRODUCTOS_PATH, STOCKS_PATH)
 
         elif step_func == transformar_periodo:
              if skip_step_execution:
                  print(f"Skipping execution of step {i + 1} ('{description}') as df_current loaded from checkpoint.")
              else:
                  if df_current is None: raise ValueError("df_current is None before transformar_periodo")
-                 df_current = step_func(SELL_IN_PATH, PRODUCTOS_PATH, STOCKS_PATH)
+                 df_current = step_func()
 
         elif step_func == generar_combinaciones_por_periodo:
              # ALWAYS generate combinations_df when this step is reached in the loop
