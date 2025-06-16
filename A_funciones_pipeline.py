@@ -8,9 +8,9 @@ import os
 
 def cargar_y_combinar_datos():
     # Cargar archivos
-    sell_in = pd.read_csv(r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\sell-in.txt', delimiter='\t')
-    productos = pd.read_csv(r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\tb_productos.txt', delimiter='\t')
-    stocks = pd.read_csv(r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\tb_stocks.txt', delimiter='\t')
+    sell_in = pd.read_csv(SELL_IN_PATH, delimiter='\t')
+    productos = pd.read_csv(PRODUCTOS_PATH, delimiter='\t')
+    stocks = pd.read_csv(STOCKS_PATH, delimiter='\t')
     #drop duplicates in productos
     productos = productos.drop_duplicates(subset=['product_id'])
     ## Unir Datasets
@@ -375,7 +375,7 @@ def calculate_product_moving_avg(df: pd.DataFrame) -> pd.DataFrame:
     return df_with_moving_avg
 
 
-def add_macro_event_flag(df, event_file_path=r'C:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\Data\eventos_macro_arg_2017_2019.txt'):
+def add_macro_event_flag(df, event_file_path=EVENTOS_PATH):
     """
     Adds a boolean flag column indicating if a macro event occurred in the month
     of the 'fecha' column.

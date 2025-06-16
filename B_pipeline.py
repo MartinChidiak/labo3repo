@@ -35,6 +35,7 @@ GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
 PRODUCTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_productos.txt')
 STOCKS_PATH = os.path.join(GCS_BUCKET_PATH, 'tb_stocks.txt')  
+EVENTOS_PATH = os.path.join(GCS_BUCKET_PATH, 'eventos_macro_arg_2017_2019.txt')  
 CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints')
 
 # Define checkpoint paths
