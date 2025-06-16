@@ -147,7 +147,10 @@ def run_feature_engineering_steps_v2(df, steps):
         print(f"Executing step {i + 1}: {step['description']}")
         try:
             params = step.get("params", {})
+            start_time = time.time()
             df_current = step["func"](df_current, **params)
+            elapsed = time.time() - start_time
+            print(f"{step['description']} completed in {elapsed:.2f} seconds.")
             print(f"Saving checkpoint to {step['checkpoint']}")
             df_current.to_pickle(step["checkpoint"])
         except Exception as e:
@@ -187,6 +190,7 @@ def run_initial_pipeline_steps_v2():
         step_func, checkpoint_path, description, takes_df = initial_pipeline_steps[i]
         print(f"Executing initial step {i + 1}: {description}")
         skip_step_execution = (i == start_step_index and latest_checkpoint_found and start_step_index > 0)
+        start_time = time.time()
         if step_func == cargar_y_combinar_datos:
             if not skip_step_execution:
                 df_current = step_func(SELL_IN_PATH, PRODUCTOS_PATH, STOCKS_PATH)
@@ -209,6 +213,8 @@ def run_initial_pipeline_steps_v2():
                     products_df = pd.read_csv(PRODUCTOS_PATH, delimiter='\t')
                     products_df = products_df.drop_duplicates(subset=['product_id'])
                 df_current = step_func(df_current, products_df=products_df)
+        elapsed = time.time() - start_time
+        print(f"{description} completed in {elapsed:.2f} seconds.")
         if checkpoint_path is not None and df_current is not None:
             print(f"Saving intermediate checkpoint to {checkpoint_path}")
             df_current.to_pickle(checkpoint_path)
