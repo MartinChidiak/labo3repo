@@ -266,7 +266,7 @@ def run_optuna_optimization(X_train_eval, y_train_eval, X_val_eval, y_val_eval, 
             'reg_lambda': trial.suggest_float('reg_lambda', 1e-8, 1.0, log=True),
         }
 
-        model = lgb.LGBMRegressor(**params)
+        model = lgb.LGBMRegressor(**params, n_jobs=-1)
         model.fit(X_train_eval, y_train_eval,
                   categorical_feature=eval_categorical_cols,
                   eval_set=[(X_val_eval, y_val_eval)],
