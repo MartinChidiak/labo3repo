@@ -13,25 +13,6 @@ def save_checkpoint_async(df, path):
     thread.start()
     return thread
 
-# Archivo	Propósito
-# df_inicial.pkl	Datos combinados iniciales
-# df_con_fecha.pkl	Datos con columna de fecha
-# df_merged_combinations.pkl	Combinaciones mergeadas con datos originales
-# df_filled.pkl	Datos con info de producto completada
-# 01_brand_loyalty.pkl	Feature: lealtad de marca
-# 02_customer_category_avg_tn.pkl	Feature: promedio tn por cliente/categoría
-# 03_customer_category_count.pkl	Feature: conteo de categorías por cliente
-# 04_macro_event_flag.pkl	Feature: bandera de evento macroeconómico
-# 05_tn_percentage_change.pkl	Feature: cambio porcentual de tn
-# 06_months_since_last_purchase.pkl	Feature: meses desde última compra
-# 07_product_moving_avg.pkl	Feature: promedio móvil de tn
-# 08_weighted_tn_sum.pkl	Feature: suma ponderada de tn
-# 09_demand_growth_rate_diff.pkl	Feature: diff. tasa de crecimiento de demanda
-# 10_total_tn_per_product.pkl	Feature: suma global de tn por producto
-# 11_lags.pkl	Features: columnas de lags
-# df_train_final_featured.pkl	DataFrame final de entrenamiento
-# df_predict_final_featured.pkl	DataFrame final de predicción
-
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 
 SELL_IN_PATH = os.path.join(GCS_BUCKET_PATH, 'sell-in.txt')
@@ -59,7 +40,8 @@ DF_07_PRODUCT_MOVING_AVG_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '07_product_
 DF_08_WEIGHTED_TN_SUM_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '08_weighted_tn_sum.pkl')
 DF_09_DEMAND_GROWTH_RATE_DIFF_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '09_demand_growth_rate_diff.pkl')
 DF_10_TOTAL_TN_PER_PRODUCT_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '10_total_tn_per_product.pkl')
-DF_11_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11_lags.pkl')
+DF_11A_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11A_lags.pkl')
+DF_11B_CALCULATE_DELTA_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '11B_calculate_delta_lags.pkl')
 DF_12_ADD_ROLLING_STATISTICS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '12_add_rolling_statistics_features.pkl')
 DF_13_ADD_EXPONENTIAL_MOVING_AVERAGE_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '13_add_exponential_moving_average_features.pkl')
 DF_14_ADD_TREND_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '14_add_trend_features.pkl')
@@ -67,7 +49,7 @@ DF_15_ADD_DIFFERENCE_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '15_add
 DF_16_ADD_TOTAL_CATEGORY_SALES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '16_add_total_category_sales.pkl')
 DF_17_ADD_CUSTOMER_PRODUCT_TOTAL_WEIGHTS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '17_add_customer_product_total_weights.pkl')
 DF_18_ADD_INTERACTION_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '18_add_interaction_features.pkl')
-DF_19_CALCULATE_DELTA_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '19_calculate_delta_lags.pkl')
+
 
 
 
@@ -178,13 +160,13 @@ feature_engineering_steps_v2 = [
     },
     {
         "func": generar_lags_por_combinacion,
-        "checkpoint": DF_11_LAGS_CHECKPOINT,
+        "checkpoint": DF_11A_LAGS_CHECKPOINT,
         "description": "Calculate lags",
         "params": {"columnas_para_lag": LAG_COLUMNS, "num_lags": NUM_LAGS}
     },
     {
         "func": calculate_delta_lags,
-        "checkpoint": DF_19_CALCULATE_DELTA_LAGS_CHECKPOINT,
+        "checkpoint": DF_11B_CALCULATE_DELTA_LAGS_CHECKPOINT,
         "description": "Calculate delta between consecutive lags",
         "params": {
             "base_columns": LAG_COLUMNS,
@@ -206,6 +188,11 @@ feature_engineering_steps_v2 = [
             "windows": list(range(1, 37)),
             "stats": ["mean"]
         }
+        # "params": {
+        #     "columns": ["tn"],
+        #     "windows": [3, 6, 12, 18, 24, 36], DEJO ESTO POR SI QUIERO REDUCIR EL TIEMPO SI VEO QUE LO ANTERIOR NO DABA FEATURES MUY ÚTILES
+        #     "stats": ["mean", "std"]
+        # }
     },
     {
         "func": add_exponential_moving_average_features,

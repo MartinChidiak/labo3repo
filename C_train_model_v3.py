@@ -13,7 +13,7 @@ import optuna # Import Optuna
 
 # Define data paths
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
-CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints2')
+CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints3')
 
 # Update to use the final featured checkpoints from pipeline.py
 DF_TRAIN_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_train_final_featured.pkl')
@@ -31,7 +31,7 @@ FUTURE_TARGET = f'{TARGET}_future'  # New column name for the shifted target
 
 # Parameters for feature engineering functions (copied from pipeline.py)
 LAG_COLUMNS = ['cust_request_qty', 'cust_request_tn','tn']
-NUM_LAGS = 12
+NUM_LAGS = 36
 # Moving average window (e.g., 3 months)
 MOVING_AVG_WINDOW = 3
 
@@ -278,7 +278,7 @@ def run_optuna_optimization(X_train_eval, y_train_eval, X_val_eval, y_val_eval, 
 
     study = optuna.create_study(direction='minimize')
     # Aumentamos el número de trials para una búsqueda más exhaustiva
-    study.optimize(objective, n_trials=50)
+    study.optimize(objective, n_trials=30)
 
     print("\nOptuna optimization finished. Best trial:")
     print(f"  Value: {study.best_trial.value:.4f}")
@@ -353,6 +353,27 @@ def make_predictions_and_save_results(model, X_predict, df_predict_initial, targ
     
     return prediction_results_df
 
+def train_and_predict_with_seeds(X_train, y_train, X_predict, categorical_features_names, best_params, seeds, model_save_dir=None):
+    """
+    Entrena un modelo LightGBM por cada semilla, guarda cada modelo y promedia las predicciones.
+    """
+    predictions_list = []
+    for seed in seeds:
+        print(f"\nEntrenando modelo con semilla {seed}...")
+        params = best_params.copy()
+        params['random_state'] = seed
+        model = lgb.LGBMRegressor(**params)
+        model.fit(X_train, y_train, categorical_feature=categorical_features_names)
+        preds = model.predict(X_predict)
+        predictions_list.append(preds)
+        # Guardar el modelo individual si se especifica el directorio
+        if model_save_dir is not None:
+            model_path = os.path.join(model_save_dir, f"lgbm_final_model_seed_{seed}.pkl")
+            save_model_checkpoint(model, model_path)
+    # Promediar las predicciones
+    predictions_mean = np.mean(predictions_list, axis=0)
+    return predictions_mean, np.array(predictions_list)
+
 def main_training_script():
     print("Starting Model Training and Prediction Script")
 
@@ -391,7 +412,42 @@ def main_training_script():
         generate_and_save_feature_importance_plot(lgbm_final, X_train, CHECKPOINTS_DIR, PREDICTION_PERIOD, FUTURE_TARGET)
 
     # Make predictions (if model is available)
-    prediction_results_df = make_predictions_and_save_results(lgbm_final, X_predict, df_predict_fe_initial, TARGET, PREDICTION_PERIOD, PREDICTIONS_DF_CHECKPOINT, os.path.join(CHECKPOINTS_DIR, f'predictions_{PREDICTION_PERIOD}.csv'))
+    if lgbm_final is not None and best_params is not None:
+        # Define tus semillas (puedes ajustar los valores)
+        seeds = [42, 2024, 7, 123, 999][:5]  # Usa 3 o 5 semillas según prefieras
+
+        # Ensemble: Entrena y predice con varias semillas
+        predictions_mean, predictions_array = train_and_predict_with_seeds(
+            X_train, y_train, X_predict, categorical_features_names, best_params, seeds, model_save_dir=CHECKPOINTS_DIR
+        )
+
+        # Guarda el resultado promedio
+        prediction_results_df = df_predict_fe_initial[['customer_id', 'product_id', 'fecha', TARGET]].copy()
+        prediction_results_df[f'{TARGET}_predicted_{PREDICTION_PERIOD}'] = predictions_mean
+        save_dataframe_checkpoint(prediction_results_df, PREDICTIONS_DF_CHECKPOINT)
+        prediction_results_df.to_csv(os.path.join(CHECKPOINTS_DIR, f'predictions_{PREDICTION_PERIOD}.csv'), index=False)
+        print(f"Predicciones ensemble guardadas usando semillas: {seeds}")
+        print("\nEjemplo de predicciones ensemble:")
+        print(prediction_results_df.head())
+
+        # Visualización de la dispersión:
+        std_per_sample = np.std(predictions_array, axis=0)
+        plt.figure(figsize=(10, 5))
+        plt.hist(std_per_sample, bins=30, color='skyblue', edgecolor='black')
+        plt.title('Dispersión de las predicciones entre semillas (std por muestra)')
+        plt.xlabel('Desviación estándar de la predicción')
+        plt.ylabel('Cantidad de muestras')
+        plt.tight_layout()
+        dispersion_plot_path = os.path.join(CHECKPOINTS_DIR, f'dispersion_predicciones_{PREDICTION_PERIOD}.png')
+        plt.savefig(dispersion_plot_path)
+        plt.show()
+        print(f"Gráfico de dispersión guardado en: {dispersion_plot_path}")
+    else:
+        # Fallback: predicción simple si no hay ensemble
+        prediction_results_df = make_predictions_and_save_results(
+            lgbm_final, X_predict, df_predict_fe_initial, TARGET, PREDICTION_PERIOD,
+            PREDICTIONS_DF_CHECKPOINT, os.path.join(CHECKPOINTS_DIR, f'predictions_{PREDICTION_PERIOD}.csv')
+        )
 
     print("\nModel Training and Prediction Script Finished.")
 
