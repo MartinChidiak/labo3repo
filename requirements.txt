@@ -29,6 +29,5 @@ SQLAlchemy==2.0.40
 statsmodels==0.14.4
 threadpoolctl==3.6.0
 wheel==0.45.1
-pandas==2.2.2
 numpy==1.26.4
 optuna==3.6.1
