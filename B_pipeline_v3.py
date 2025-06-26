@@ -446,6 +446,17 @@ if __name__ == "__main__":
     df_combined_fe = run_feature_engineering_modular_v2(df_combined_for_fe, feature_engineering_steps_v2)
     print("\nSeparating featured data back into Train and Predict sets...")
     df_combined_fe['fecha'] = pd.to_datetime(df_combined_fe['fecha'])
+
+    # Guardar checkpoint con todas las features antes del split
+    CHECKPOINT_ALL_FEATURES = os.path.join(CHECKPOINTS_DIR, 'combined_all_features_before_split.pkl')
+    print(f"\nGuardando checkpoint con todas las features antes del split en: {CHECKPOINT_ALL_FEATURES}")
+    df_combined_fe.to_pickle(CHECKPOINT_ALL_FEATURES)
+
+    # Imprimir shape y columnas
+    print(f"\nShape del DataFrame combinado antes del split: {df_combined_fe.shape}")
+    print(f"Columnas del DataFrame combinado antes del split:\n{df_combined_fe.columns.tolist()}")
+
+
     df_train_final_pre_fe['fecha'] = pd.to_datetime(df_train_final_pre_fe['fecha'])
     cols_to_merge = [col for col in df_combined_fe.columns if col not in [TARGET, FUTURE_TARGET]]
     df_train_final = pd.merge(
