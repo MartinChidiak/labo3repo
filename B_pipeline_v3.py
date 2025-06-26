@@ -67,6 +67,8 @@ DF_15_ADD_DIFFERENCE_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '15_add
 DF_16_ADD_TOTAL_CATEGORY_SALES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '16_add_total_category_sales.pkl')
 DF_17_ADD_CUSTOMER_PRODUCT_TOTAL_WEIGHTS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '17_add_customer_product_total_weights.pkl')
 DF_18_ADD_INTERACTION_FEATURES_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '18_add_interaction_features.pkl')
+DF_19_CALCULATE_DELTA_LAGS_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, '19_calculate_delta_lags.pkl')
+
 
 
 # Path for the external list of product IDs
@@ -77,13 +79,13 @@ PREDICTION_DATE = pd.to_datetime(str(PREDICTION_PERIOD), format='%Y%m').to_perio
 LAST_HISTORICAL_PERIOD = 201912
 LAST_HISTORICAL_DATE = pd.to_datetime(str(LAST_HISTORICAL_PERIOD), format='%Y%m').to_period('M')
 LAG_COLUMNS = ['cust_request_qty', 'cust_request_tn','tn']
-NUM_LAGS = 12
+NUM_LAGS = 36
 TARGET = 'tn'
 TARGET_SHIFT = 2
 FUTURE_TARGET = f'{TARGET}_future'
 
 
-from A_funciones_pipeline_v2 import (
+from A_funciones_pipeline_v3 import (
     cargar_y_combinar_datos,
     optimize_dtypes,
     transformar_periodo,
@@ -108,6 +110,7 @@ from A_funciones_pipeline_v2 import (
     add_total_category_sales,
     add_customer_product_total_weights,
     add_interaction_features,
+    calculate_delta_lags,
 
 )
 
@@ -180,10 +183,29 @@ feature_engineering_steps_v2 = [
         "params": {"columnas_para_lag": LAG_COLUMNS, "num_lags": NUM_LAGS}
     },
     {
+        "func": calculate_delta_lags,
+        "checkpoint": DF_19_CALCULATE_DELTA_LAGS_CHECKPOINT,
+        "description": "Calculate delta between consecutive lags",
+        "params": {
+            "base_columns": LAG_COLUMNS,
+            "max_lag": 35
+        }
+    },
+    # {
+    #     "func": add_rolling_statistics_features,
+    #     "checkpoint": DF_12_ADD_ROLLING_STATISTICS_CHECKPOINT,
+    #     "description": "Add rolling statistics features",
+    #     "params": {}
+    # },
+    {
         "func": add_rolling_statistics_features,
         "checkpoint": DF_12_ADD_ROLLING_STATISTICS_CHECKPOINT,
-        "description": "Add rolling statistics features",
-        "params": {}
+        "description": "Add rolling statistics features for moving averages",
+        "params": {
+            "columns": ["tn"],
+            "windows": list(range(1, 37)),
+            "stats": ["mean"]
+        }
     },
     {
         "func": add_exponential_moving_average_features,
