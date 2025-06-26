@@ -272,51 +272,56 @@ def generar_lags_por_combinacion(df, columnas_para_lag=None, num_lags=12, **para
     if not all(col in df.columns for col in required_cols):
         missing = [col for col in required_cols if col not in df.columns]
         raise ValueError(f"El DataFrame debe contener las columnas: {missing}")
-    df_con_lags = df.copy()
-    df_con_lags = df_con_lags.sort_values(by=['customer_id', 'product_id', 'fecha'])
+
+    df_con_lags = df.sort_values(by=['customer_id', 'product_id', 'fecha'])
     grouped = df_con_lags.groupby(['customer_id', 'product_id'])
+    
+    new_cols_list = []
     for col in columnas_para_lag:
         if col not in df_con_lags.columns:
-            print(f"Advertencia: La columna '{col}' no se encontró en el DataFrame. Saltando.")
+            warnings.warn(f"Advertencia: La columna para lag '{col}' no se encontró en el DataFrame. Saltando.")
             continue
         for i in range(1, num_lags + 1):
-            lag_col_name = f'{col}_lag_{i}'
-            df_con_lags[lag_col_name] = grouped[col].shift(i)
-    return 
+            new_col = grouped[col].shift(i)
+            new_col.name = f'{col}_lag_{i}'
+            new_cols_list.append(new_col)
+            
+    if not new_cols_list:
+        return df # No se generaron columnas, devolver el df original
+
+    # Usar concat para añadir todas las nuevas columnas a la vez. Es mucho más eficiente.
+    # El reset_index/set_index es para asegurar una alineación correcta.
+    original_index = df_con_lags.index
+    df_con_lags = pd.concat([df_con_lags.reset_index(drop=True)] + [c.reset_index(drop=True) for c in new_cols_list], axis=1)
+    df_con_lags.index = original_index
+    
+    return df_con_lags
 
 def calculate_delta_lags(df, base_columns=None, max_lag=35, **params):
-    """
-    Calcula la diferencia entre valores de lags consecutivos ('delta lags').
-    Esta función asume que las columnas de lag (ej. 'tn_lag_1', 'tn_lag_2')
-    ya existen en el DataFrame.
-
-    Por ejemplo, crea 'tn_delta_lag_1' como ('tn_lag_1' - 'tn_lag_2').
-
-    Args:
-        df (pd.DataFrame): DataFrame de entrada que ya contiene las columnas de lag.
-        base_columns (list, optional): Lista de columnas base para las que se calcularán los deltas.
-        max_lag (int, optional): El número de deltas a generar. Se usarán lags hasta max_lag + 1.
-        **params: Permite pasar configuraciones a través de un diccionario de parámetros.
-    """
     df_copy = df.copy()
 
     base_columns = params.get("delta_lag_columns", base_columns if base_columns is not None else ['tn'])
     max_lag = params.get("delta_lag_max", max_lag)
 
+    new_delta_cols = {}
     for col in base_columns:
-        # Iteramos de 1 a max_lag para generar esa cantidad de deltas.
-        # Esto requiere que exista el lag i y el lag i+1.
         for i in range(1, max_lag + 1):
             lag_col_current = f'{col}_lag_{i}'
             lag_col_next = f'{col}_lag_{i+1}'
             delta_col_name = f'{col}_delta_lag_{i}'
 
             if lag_col_current in df_copy.columns and lag_col_next in df_copy.columns:
-                df_copy[delta_col_name] = df_copy[lag_col_current] - df_copy[lag_col_next]
+                # Almacenar en un diccionario en lugar de añadir directamente al df
+                new_delta_cols[delta_col_name] = df_copy[lag_col_current] - df_copy[lag_col_next]
             else:
                 warnings.warn(f"Advertencia: No se pudieron encontrar '{lag_col_current}' o '{lag_col_next}'. No se puede calcular '{delta_col_name}'.")
                 break
-    return df_copy
+    
+    if not new_delta_cols:
+        return df_copy # No se generaron columnas, devolver el df original
+        
+    # Asignar todas las nuevas columnas a la vez desde el diccionario. Es más eficiente.
+    return df_copy.assign(**new_delta_cols)
 
 def add_total_tn_per_product(df, **params):
     # Ordena por producto y fecha para asegurar el orden temporal
