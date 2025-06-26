@@ -242,8 +242,8 @@ def create_time_based_evaluation_splits(df_train_fe, X_train, y_train, validatio
     return X_train_eval, y_train_eval, X_val_eval, y_val_eval, df_val_eval_full, eval_categorical_cols
 
 def run_optuna_optimization(X_train_eval, y_train_eval, X_val_eval, y_val_eval, df_val_eval_full, eval_categorical_cols, future_target_col):
-    """Runs Optuna hyperparameter optimization."""
     print("\nStep 4: Starting Optuna hyperparameter optimization...")
+
     if X_train_eval.empty or X_val_eval.empty:
         print("Skipping Optuna optimization due to insufficient evaluation data.")
         return None
@@ -276,16 +276,28 @@ def run_optuna_optimization(X_train_eval, y_train_eval, X_val_eval, y_val_eval, 
         # Forma más limpia y eficiente de obtener el score de la métrica personalizada
         return model.best_score_['valid_0'][custom_metric_eval.metric_name]
 
-    study = optuna.create_study(direction='minimize')
-    # Aumentamos el número de trials para una búsqueda más exhaustiva
-    study.optimize(objective, n_trials=30)
+    # --- NUEVO: Checkpointing con SQLite ---
+    optuna_db_path = os.path.join(CHECKPOINTS_DIR, "optuna_study.db")
+    storage_url = f"sqlite:///{optuna_db_path}"
+    study = optuna.create_study(
+        direction='minimize',
+        storage=storage_url,
+        study_name="lgbm_hyperopt",
+        load_if_exists=True
+    )
+
+    study.optimize(objective, n_trials=30)  # Puedes aumentar n_trials y relanzar el script para continuar
 
     print("\nOptuna optimization finished. Best trial:")
     print(f"  Value: {study.best_trial.value:.4f}")
     print("  Params: ")
     for key, value in study.best_trial.params.items():
         print(f"    {key}: {value}")
-    
+
+    # (Opcional) Guarda los mejores parámetros
+    with open(os.path.join(CHECKPOINTS_DIR, "optuna_best_params.pkl"), "wb") as f:
+        pickle.dump(study.best_trial.params, f)
+
     return study.best_trial.params
 
 def train_final_lgbm_model(X_train, y_train, best_params, categorical_features_names, model_save_path, last_historical_period):
