@@ -184,7 +184,18 @@ def prepare_datasets(df_train_fe, df_predict_fe_initial, target_future_col, targ
     id_cols = ['customer_id', 'product_id', 'periodo']
     date_cols = ['fecha'] # Exclude 'fecha' from features
     target_cols = [target_original_col, target_future_col]
-    
+
+    # --- NUEVO: Forzar tipo category en columnas explícitas ---
+    categorical_cols_explicit = [
+        'customer_id', 'product_id', 'periodo', 'cat1', 'cat2', 'cat3', 'brand', 'cliente_categoria', 'is_macro_event'
+        # agrega aquí cualquier otra columna que quieras tratar como categórica
+    ]
+    for col in categorical_cols_explicit:
+        if col in df_train_fe.columns:
+            df_train_fe[col] = df_train_fe[col].astype('category')
+        if col in df_predict_fe_initial.columns:
+            df_predict_fe_initial[col] = df_predict_fe_initial[col].astype('category')
+
     # Identify categorical columns that are already 'category' dtype from pipeline.py
     # and are not target or ID columns that we'll exclude
     categorical_features_names = [col for col in df_train_fe.columns 
@@ -198,11 +209,22 @@ def prepare_datasets(df_train_fe, df_predict_fe_initial, target_future_col, targ
     X_train = df_train_fe[features].copy()
     X_predict = df_predict_fe_initial[features].copy()
 
+    # --- Asegura tipos y categorías ---
+    for col in categorical_features_names:
+        if col in X_train.columns:
+            X_train[col] = X_train[col].astype('category')
+        if col in X_predict.columns:
+            X_predict[col] = X_predict[col].astype('category')
+            # Alinea categorías de predict con las de train
+            X_predict[col] = X_predict[col].cat.set_categories(X_train[col].cat.categories)
+
+    # Elimina columnas categóricas que no estén en ambos sets
+    categorical_features_names = [col for col in categorical_features_names if col in X_train.columns and col in X_predict.columns]
+
     # Ensure feature columns are identical and in the same order
     if not X_train.columns.equals(X_predict.columns):
         print("Warning: Feature columns do not match between train and predict sets. Reindexing X_predict.")
-        # Reindex X_predict to match X_train columns, filling missing with 0 or appropriate default
-        X_predict = X_predict.reindex(columns=X_train.columns, fill_value=0) # Consider fill_value=0 or X_train.mean() as appropriate
+        X_predict = X_predict.reindex(columns=X_train.columns, fill_value=0)
 
     print(f"Features identified: {len(features)} columns.")
     print(f"Categorical features: {categorical_features_names}")
