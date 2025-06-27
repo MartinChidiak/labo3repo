@@ -308,7 +308,19 @@ def run_optuna_optimization(X_train_eval, y_train_eval, X_val_eval, y_val_eval, 
         load_if_exists=True
     )
 
-    study.optimize(objective, n_trials=30)  # Puedes aumentar n_trials y relanzar el script para continuar
+    # --- Check for completed trials before running new ones ---
+    completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    print(f"Found {len(completed_trials)} completed trials in the study.")
+
+    total_trials_target = 30  # The desired total number of completed trials
+
+    if len(completed_trials) >= total_trials_target:
+        print(f"Skipping optimization as {len(completed_trials)} trials are already complete (target: {total_trials_target}).")
+    else:
+        remaining_trials = total_trials_target - len(completed_trials)
+        print(f"Continuing optimization, running up to {remaining_trials} more trials...")
+        study.optimize(objective, n_trials=remaining_trials)
+
 
     print("\nOptuna optimization finished. Best trial:")
     print(f"  Value: {study.best_trial.value:.4f}")
