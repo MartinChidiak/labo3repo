@@ -437,6 +437,34 @@ def load_best_params(path):
         print(f"Best params file not found at {path}")
         return None
 
+def generate_validation_outputs_if_needed(
+    lgbm_final, X_val_eval, y_val_eval, df_val_eval_full, checkpoints_dir
+):
+    csv_cliente_producto = os.path.join(checkpoints_dir, 'validacion_preds_cliente_producto.csv')
+    csv_por_producto = os.path.join(checkpoints_dir, 'validacion_preds_por_producto.csv')
+
+    # Si ambos archivos ya existen, no hace falta volver a generarlos
+    if os.path.exists(csv_cliente_producto) and os.path.exists(csv_por_producto):
+        print("Los archivos de validación ya existen. Saltando generación de CSVs.")
+        return
+
+    # Si no existen, generarlos
+    y_val_pred = lgbm_final.predict(X_val_eval)
+    df_val_preds = df_val_eval_full[['customer_id', 'product_id', 'fecha']].copy()
+    df_val_preds['real'] = y_val_eval.values
+    df_val_preds['pred'] = y_val_pred
+    df_val_preds.to_csv(csv_cliente_producto, index=False)
+    print(f"Guardado: {csv_cliente_producto}")
+
+    df_prod_agg = df_val_preds.groupby('product_id').agg(
+        real_total=('real', 'sum'),
+        pred_total=('pred', 'sum')
+    ).reset_index()
+    df_prod_agg['abs_error'] = (df_prod_agg['real_total'] - df_prod_agg['pred_total']).abs()
+    df_prod_agg['abs_perc_error'] = 100 * df_prod_agg['abs_error'] / df_prod_agg['real_total'].replace(0, np.nan)
+    df_prod_agg.to_csv(csv_por_producto, index=False)
+    print(f"Guardado: {csv_por_producto}")
+
 def main_training_script():
     print("Starting Model Training and Prediction Script")
 
@@ -508,6 +536,38 @@ def main_training_script():
         plt.savefig(dispersion_plot_path)
         plt.show()
         print(f"Gráfico de dispersión guardado en: {dispersion_plot_path}")
+
+        # --- NUEVO: Predicciones en el set de validación ---
+        # Predecir en el set de validación
+        y_val_pred = lgbm_final.predict(X_val_eval)
+
+        # DataFrame con IDs, real y predicho
+        df_val_preds = df_val_eval_full[['customer_id', 'product_id', 'fecha']].copy()
+        df_val_preds['real'] = y_val_eval.values
+        df_val_preds['pred'] = y_val_pred
+
+        # Guardar a CSV a nivel cliente-producto
+        df_val_preds.to_csv(os.path.join(CHECKPOINTS_DIR, 'validacion_preds_cliente_producto.csv'), index=False)
+        print("Guardado: validacion_preds_cliente_producto.csv")
+
+        # Agregado por producto
+        df_prod_agg = df_val_preds.groupby('product_id').agg(
+            real_total=('real', 'sum'),
+            pred_total=('pred', 'sum')
+        ).reset_index()
+
+        # Guardar a CSV a nivel producto
+        df_prod_agg.to_csv(os.path.join(CHECKPOINTS_DIR, 'validacion_preds_por_producto.csv'), index=False)
+        print("Guardado: validacion_preds_por_producto.csv")
+
+        # Agregado por producto
+        df_prod_agg['abs_error'] = (df_prod_agg['real_total'] - df_prod_agg['pred_total']).abs()
+        df_prod_agg['abs_perc_error'] = 100 * df_prod_agg['abs_error'] / df_prod_agg['real_total'].replace(0, np.nan)
+
+        # Generate validation outputs if needed
+        generate_validation_outputs_if_needed(
+            lgbm_final, X_val_eval, y_val_eval, df_val_eval_full, CHECKPOINTS_DIR
+        )
     else:
         # Fallback: predicción simple si no hay ensemble
         prediction_results_df = make_predictions_and_save_results(
