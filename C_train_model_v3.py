@@ -476,6 +476,13 @@ def main_training_script():
     # Prepare datasets
     X_train, y_train, X_predict, categorical_features_names = prepare_datasets(df_train_fe, df_predict_fe_initial, FUTURE_TARGET, TARGET)
 
+    # --- SIEMPRE crear los splits de validación ---
+    X_train_eval, y_train_eval, X_val_eval, y_val_eval, df_val_eval_full, eval_categorical_cols = \
+        create_time_based_evaluation_splits(df_train_fe, X_train, y_train, 
+                                            validation_start_period=201907, # Hardcoded as in original
+                                            last_hist_period=LAST_HISTORICAL_PERIOD, 
+                                            target_shift=TARGET_SHIFT)
+
     # Try loading existing model first
     lgbm_final = load_model_checkpoint(FINAL_MODEL_CHECKPOINT)
 
@@ -487,13 +494,6 @@ def main_training_script():
 
     # If model not loaded, proceed with optimization and training
     if lgbm_final is None:
-        # Create evaluation splits
-        X_train_eval, y_train_eval, X_val_eval, y_val_eval, df_val_eval_full, eval_categorical_cols = \
-            create_time_based_evaluation_splits(df_train_fe, X_train, y_train, 
-                                                validation_start_period=201907, # Hardcoded as in original
-                                                last_hist_period=LAST_HISTORICAL_PERIOD, 
-                                                target_shift=TARGET_SHIFT)
-
         # Run Optuna optimization
         best_params = run_optuna_optimization(X_train_eval, y_train_eval, X_val_eval, y_val_eval, 
                                                 df_val_eval_full, eval_categorical_cols, FUTURE_TARGET)
@@ -536,33 +536,6 @@ def main_training_script():
         plt.savefig(dispersion_plot_path)
         plt.show()
         print(f"Gráfico de dispersión guardado en: {dispersion_plot_path}")
-
-        # --- NUEVO: Predicciones en el set de validación ---
-        # Predecir en el set de validación
-        y_val_pred = lgbm_final.predict(X_val_eval)
-
-        # DataFrame con IDs, real y predicho
-        df_val_preds = df_val_eval_full[['customer_id', 'product_id', 'fecha']].copy()
-        df_val_preds['real'] = y_val_eval.values
-        df_val_preds['pred'] = y_val_pred
-
-        # Guardar a CSV a nivel cliente-producto
-        df_val_preds.to_csv(os.path.join(CHECKPOINTS_DIR, 'validacion_preds_cliente_producto.csv'), index=False)
-        print("Guardado: validacion_preds_cliente_producto.csv")
-
-        # Agregado por producto
-        df_prod_agg = df_val_preds.groupby('product_id').agg(
-            real_total=('real', 'sum'),
-            pred_total=('pred', 'sum')
-        ).reset_index()
-
-        # Guardar a CSV a nivel producto
-        df_prod_agg.to_csv(os.path.join(CHECKPOINTS_DIR, 'validacion_preds_por_producto.csv'), index=False)
-        print("Guardado: validacion_preds_por_producto.csv")
-
-        # Agregado por producto
-        df_prod_agg['abs_error'] = (df_prod_agg['real_total'] - df_prod_agg['pred_total']).abs()
-        df_prod_agg['abs_perc_error'] = 100 * df_prod_agg['abs_error'] / df_prod_agg['real_total'].replace(0, np.nan)
 
         # Generate validation outputs if needed
         generate_validation_outputs_if_needed(
