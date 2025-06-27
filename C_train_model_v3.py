@@ -341,7 +341,7 @@ def train_final_lgbm_model(X_train, y_train, best_params, categorical_features_n
         print("Skipping final model training due to empty training data.")
         return None
 
-    lgbm_final = lgb.LGBMRegressor(**best_params)
+    lgbm_final = lgb.LGBMRegressor(**best_params, n_jobs=-1)
     lgbm_final.fit(X_train, y_train, categorical_feature=categorical_features_names)
     save_model_checkpoint(lgbm_final, model_save_path)
     return lgbm_final
