@@ -429,6 +429,14 @@ def train_and_predict_with_seeds(X_train, y_train, X_predict, categorical_featur
     predictions_mean = np.mean(predictions_list, axis=0)
     return predictions_mean, np.array(predictions_list), loaded_seeds
 
+def load_best_params(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    else:
+        print(f"Best params file not found at {path}")
+        return None
+
 def main_training_script():
     print("Starting Model Training and Prediction Script")
 
@@ -442,6 +450,12 @@ def main_training_script():
 
     # Try loading existing model first
     lgbm_final = load_model_checkpoint(FINAL_MODEL_CHECKPOINT)
+
+    # --- NUEVO: Cargar best_params si existen ---
+    OPTUNA_BEST_PARAMS_PATH = os.path.join(CHECKPOINTS_DIR, "optuna_best_params.pkl")
+    best_params = None
+    if os.path.exists(OPTUNA_BEST_PARAMS_PATH):
+        best_params = load_best_params(OPTUNA_BEST_PARAMS_PATH)
 
     # If model not loaded, proceed with optimization and training
     if lgbm_final is None:
