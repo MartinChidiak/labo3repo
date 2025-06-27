@@ -402,23 +402,32 @@ def make_predictions_and_save_results(model, X_predict, df_predict_initial, targ
 def train_and_predict_with_seeds(X_train, y_train, X_predict, categorical_features_names, best_params, seeds, model_save_dir=None):
     """
     Entrena un modelo LightGBM por cada semilla, guarda cada modelo y promedia las predicciones.
+    Si el modelo ya existe, lo carga y predice.
     """
     predictions_list = []
+    loaded_seeds = []
     for seed in seeds:
-        print(f"\nEntrenando modelo con semilla {seed}...")
-        params = best_params.copy()
-        params['random_state'] = seed
-        model = lgb.LGBMRegressor(**params)
-        model.fit(X_train, y_train, categorical_feature=categorical_features_names)
+        model_path = os.path.join(model_save_dir, f"lgbm_final_model_seed_{seed}.pkl") if model_save_dir is not None else None
+        model = None
+        # Si el modelo ya existe, cargarlo
+        if model_path is not None and os.path.exists(model_path):
+            print(f"Modelo para seed {seed} ya existe. Cargando...")
+            model = load_model_checkpoint(model_path)
+        # Si no existe, entrenar y guardar
+        if model is None:
+            print(f"Entrenando modelo con semilla {seed}...")
+            params = best_params.copy()
+            params['random_state'] = seed
+            model = lgb.LGBMRegressor(**params)
+            model.fit(X_train, y_train, categorical_feature=categorical_features_names)
+            if model_save_dir is not None:
+                save_model_checkpoint(model, model_path)
         preds = model.predict(X_predict)
         predictions_list.append(preds)
-        # Guardar el modelo individual si se especifica el directorio
-        if model_save_dir is not None:
-            model_path = os.path.join(model_save_dir, f"lgbm_final_model_seed_{seed}.pkl")
-            save_model_checkpoint(model, model_path)
+        loaded_seeds.append(seed)
     # Promediar las predicciones
     predictions_mean = np.mean(predictions_list, axis=0)
-    return predictions_mean, np.array(predictions_list)
+    return predictions_mean, np.array(predictions_list), loaded_seeds
 
 def main_training_script():
     print("Starting Model Training and Prediction Script")
@@ -459,11 +468,8 @@ def main_training_script():
 
     # Make predictions (if model is available)
     if lgbm_final is not None and best_params is not None:
-        # Define tus semillas (puedes ajustar los valores)
-        seeds = [42, 2024, 7, 123, 999][:5]  # Usa 3 o 5 semillas según prefieras
-
-        # Ensemble: Entrena y predice con varias semillas
-        predictions_mean, predictions_array = train_and_predict_with_seeds(
+        seeds = [42, 2024, 7, 123, 999][:5]
+        predictions_mean, predictions_array, loaded_seeds = train_and_predict_with_seeds(
             X_train, y_train, X_predict, categorical_features_names, best_params, seeds, model_save_dir=CHECKPOINTS_DIR
         )
 
@@ -472,7 +478,7 @@ def main_training_script():
         prediction_results_df[f'{TARGET}_predicted_{PREDICTION_PERIOD}'] = predictions_mean
         save_dataframe_checkpoint(prediction_results_df, PREDICTIONS_DF_CHECKPOINT)
         prediction_results_df.to_csv(os.path.join(CHECKPOINTS_DIR, f'predictions_{PREDICTION_PERIOD}.csv'), index=False)
-        print(f"Predicciones ensemble guardadas usando semillas: {seeds}")
+        print(f"Predicciones ensemble guardadas usando semillas: {loaded_seeds}")
         print("\nEjemplo de predicciones ensemble:")
         print(prediction_results_df.head())
 
