@@ -2,7 +2,7 @@
 experiments
 .cache
 *.parquet
-*.txt
+#*.txt
 !requirements.txt
 *.gz
 *.pyc
