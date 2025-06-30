@@ -16,7 +16,8 @@ GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints3')
 
 # Update to use the final featured checkpoints from pipeline.py
-DF_TRAIN_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_train_final_featured.pkl')
+DF_TRAIN_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_train_final_featured.pkl')  # hasta 201910
+DF_PARA_TRAIN_FINAL = os.path.join(CHECKPOINTS_DIR, 'df_para_train_final.pkl')            # hasta 201912
 DF_PREDICT_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_predict_final_featured.pkl')
 
 
@@ -167,7 +168,8 @@ def load_processed_data(df_train_path, df_predict_path):
     print("Step 1: Loading final featured data...")
     df_train_fe = load_dataframe_checkpoint(df_train_path)
     df_predict_fe_initial = load_dataframe_checkpoint(df_predict_path)
-
+    df_train_fe_full = load_dataframe_checkpoint(DF_PARA_TRAIN_FINAL)
+    
     if df_train_fe is None or df_predict_fe_initial is None:
         print("Error: Could not load featured dataframes. Ensure pipeline.py ran successfully.")
         return None, None
@@ -499,8 +501,15 @@ def main_training_script():
                                                 df_val_eval_full, eval_categorical_cols, FUTURE_TARGET)
 
         if best_params:
-            # Train final model
-            lgbm_final = train_final_lgbm_model(X_train, y_train, best_params, categorical_features_names, FINAL_MODEL_CHECKPOINT, LAST_HISTORICAL_PERIOD)
+            # Prepara datasets con el dataframe extendido (incluye 201911 y 201912)
+            X_train_full, y_train_full, _, categorical_features_names_full = prepare_datasets(
+                df_train_fe_full, df_predict_fe_initial, FUTURE_TARGET, TARGET
+            )
+
+            # Entrena el modelo final con todos los datos históricos
+            lgbm_final = train_final_lgbm_model(
+                X_train_full, y_train_full, best_params, categorical_features_names_full, FINAL_MODEL_CHECKPOINT, LAST_HISTORICAL_PERIOD
+            )
         else:
             print("\nOptimization did not yield best parameters or was skipped. Cannot train final model.")
 
