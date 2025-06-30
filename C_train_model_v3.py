@@ -161,6 +161,8 @@ def load_dataframe_checkpoint(path):
         print(f"DataFrame checkpoint not found at {path}")
         return None
 
+df_train_fe_full = load_dataframe_checkpoint(DF_PARA_TRAIN_FINAL)
+
 # --- New: Helper functions for modularity ---
 
 def load_processed_data(df_train_path, df_predict_path):
