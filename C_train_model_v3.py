@@ -19,6 +19,9 @@ CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints3')
 DF_TRAIN_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_train_final_featured.pkl')  # hasta 201910
 DF_PREDICT_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_predict_final_featured.pkl')
 
+# --- NUEVO: Checkpoint para el dataframe 201912 ---
+DF_201912_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_combined_201912.pkl')
+
 
 # Define the prediction period (format YYYYMM)
 PREDICTION_PERIOD = 202002
@@ -470,7 +473,7 @@ def main_training_script():
     print("Starting Model Training and Prediction Script")
 
     # Load data
-    df_train_fe, df_predict_fe_initial = load_processed_data(DF_TRAIN_FINAL_CHECKPOINT, DF_PREDICT_FINAL_CHECKPOINT)
+    df_train_fe, df_predict_fe_initial = load_processed_data(DF_TRAIN_FINAL_CHECKPOINT, DF_201912_CHECKPOINT)
     if df_train_fe is None or df_predict_fe_initial is None:
         return # Exit if data loading fails
 
