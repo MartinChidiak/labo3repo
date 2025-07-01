@@ -456,6 +456,13 @@ if __name__ == "__main__":
         print(f"\nShape del DataFrame combinado antes del split: {df_combined_fe.shape}")
         print(f"Columnas del DataFrame combinado antes del split:\n{df_combined_fe.columns.tolist()}")
 
+    # --- NUEVO: Guardar .pkl solo con fecha 2019-12-01 (periodo 201912) ---
+    DF_201912_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_combined_201912.pkl')
+    fecha_201912 = pd.to_datetime('2019-12-01')
+    df_201912 = df_combined_fe[df_combined_fe['fecha'] == fecha_201912].copy()
+    print(f"Guardando df_combined_fe filtrado para fecha 2019-12-01: {df_201912.shape}")
+    df_201912.to_pickle(DF_201912_CHECKPOINT)
+
     df_train_final_pre_fe['fecha'] = pd.to_datetime(df_train_final_pre_fe['fecha'])
     cols_to_merge = [col for col in df_combined_fe.columns if col not in [TARGET, FUTURE_TARGET]]
     df_train_final = pd.merge(
