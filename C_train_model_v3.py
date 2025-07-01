@@ -17,7 +17,6 @@ CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints3')
 
 # Update to use the final featured checkpoints from pipeline.py
 DF_TRAIN_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_train_final_featured.pkl')  # hasta 201910
-DF_PARA_TRAIN_FINAL = os.path.join(CHECKPOINTS_DIR, 'df_para_train_final.pkl')            # hasta 201912
 DF_PREDICT_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_predict_final_featured.pkl')
 
 
@@ -161,7 +160,6 @@ def load_dataframe_checkpoint(path):
         print(f"DataFrame checkpoint not found at {path}")
         return None
 
-df_train_fe_full = load_dataframe_checkpoint(DF_PARA_TRAIN_FINAL)
 
 # --- New: Helper functions for modularity ---
 
@@ -170,7 +168,6 @@ def load_processed_data(df_train_path, df_predict_path):
     print("Step 1: Loading final featured data...")
     df_train_fe = load_dataframe_checkpoint(df_train_path)
     df_predict_fe_initial = load_dataframe_checkpoint(df_predict_path)
-    df_train_fe_full = load_dataframe_checkpoint(DF_PARA_TRAIN_FINAL)
     
     if df_train_fe is None or df_predict_fe_initial is None:
         print("Error: Could not load featured dataframes. Ensure pipeline.py ran successfully.")
@@ -503,9 +500,9 @@ def main_training_script():
                                                 df_val_eval_full, eval_categorical_cols, FUTURE_TARGET)
 
         if best_params:
-            # Prepara datasets con el dataframe extendido (incluye 201911 y 201912)
+            # Prepara datasets con el dataframe extendido (en este caso es el mismo que el original)
             X_train_full, y_train_full, _, categorical_features_names_full = prepare_datasets(
-                df_train_fe_full, df_predict_fe_initial, FUTURE_TARGET, TARGET
+                df_train_fe, df_predict_fe_initial, FUTURE_TARGET, TARGET
             )
 
             # Entrena el modelo final con todos los datos históricos
