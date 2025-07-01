@@ -460,6 +460,13 @@ if __name__ == "__main__":
     DF_201912_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_combined_201912.pkl')
     fecha_201912 = pd.to_datetime('2019-12-01')
     df_201912 = df_combined_fe[df_combined_fe['fecha'] == fecha_201912].copy()
+
+    # Agregar columnas de fecha
+    df_201912['month'] = df_201912['fecha'].dt.month
+    df_201912['year'] = df_201912['fecha'].dt.year
+    df_201912['day'] = df_201912['fecha'].dt.day
+    df_201912['dayofweek'] = df_201912['fecha'].dt.dayofweek
+
     print(f"Guardando df_combined_fe filtrado para fecha 2019-12-01: {df_201912.shape}")
     df_201912.to_pickle(DF_201912_CHECKPOINT)
 
