@@ -758,6 +758,7 @@ def process_group_ta(group, params):
     return result
 
 def add_technical_analysis_features(df, **params):
+    from joblib import Parallel, delayed
     grouped = df.groupby(['customer_id', 'product_id'])
     results = Parallel(n_jobs=-1, backend="loky")(
         delayed(process_group_ta)(group, params) for _, group in grouped
