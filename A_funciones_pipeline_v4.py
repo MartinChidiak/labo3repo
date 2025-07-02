@@ -812,7 +812,7 @@ def add_technical_analysis_features(df, **params):
         
         # 7. Stochastic Oscillator (6 meses) - Momentum de demanda
         stoch_k = ta.momentum.stoch(high=high, low=low, close=close, window=6)  # 6 meses
-        stoch_d = ta.momentum.stoch_signal(high=high, low=low, close=close, window=6, smooth=3)
+        stoch_d = ta.momentum.stoch_signal(high=high, low=low, close=close, window=6)
         
         for i, idx in enumerate(indices):
             for feature_name, feature_series in [
