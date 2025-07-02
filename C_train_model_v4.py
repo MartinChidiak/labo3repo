@@ -13,7 +13,7 @@ import optuna # Import Optuna
 
 # Define data paths
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
-CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints3')
+CHECKPOINTS_DIR = os.path.join(GCS_BUCKET_PATH, 'checkpoints4')
 
 # Update to use the final featured checkpoints from pipeline.py
 DF_TRAIN_FINAL_CHECKPOINT = os.path.join(CHECKPOINTS_DIR, 'df_train_final_featured.pkl')  # hasta 201910
