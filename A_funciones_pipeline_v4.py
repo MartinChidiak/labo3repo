@@ -700,131 +700,68 @@ def add_targeted_standardized_features(df, **params):
     return df_copy
 
 
-def add_technical_analysis_features(df, **params):
-    """
-    Agrega indicadores de análisis técnico usando la librería 'ta'.
-    Parámetros optimizados para predicción de demanda mensual cliente-producto.
-    """
-    try:
-        import ta
-    except ImportError:
-        raise ImportError("La librería 'ta' no está instalada. Instálala con: pip install ta")
-    
-    df_copy = df.copy()
-    df_copy = df_copy.sort_values(by=['customer_id', 'product_id', 'fecha'])
-    
-    # Parámetros optimizados para demanda mensual cliente-producto
-    target_column = params.get("ta_target_column", "tn")
-    rsi_window = params.get("rsi_window", 6)        # 6 meses en lugar de 14 días
-    bb_window = params.get("bollinger_window", 12)  # 1 año de datos mensuales
-    bb_std = params.get("bollinger_std", 1.5)       # Menos sensible que mercados financieros
-    macd_fast = params.get("macd_fast", 3)          # 3 meses (trimestre)
-    macd_slow = params.get("macd_slow", 12)         # 12 meses (año)
-    macd_signal = params.get("macd_signal", 6)      # 6 meses (semestre)
-    ulcer_window = params.get("ulcer_window", 8)    # 8 meses para drawdown
-    kama_window = params.get("kama_window", 6)      # 6 meses para adaptabilidad
-    kama_pow1 = params.get("kama_pow1", 2)          # Mantener estándar
-    kama_pow2 = params.get("kama_pow2", 30)         # Mantener estándar
 
-    if target_column not in df_copy.columns:
-        warnings.warn(f"Columna objetivo '{target_column}' no encontrada. Saltando análisis técnico.")
-        return df_copy
-    
-    grouped = df_copy.groupby(['customer_id', 'product_id'])
-    
-    # Lista para almacenar todas las nuevas features
-    new_features = {}
-    
-    for (customer_id, product_id), group in grouped:
-        min_periods_needed = max(rsi_window, bb_window, macd_slow, ulcer_window, kama_window)
-        if len(group) < min_periods_needed:
-            continue
-            
-        series = group[target_column].reset_index(drop=True)
-        indices = group.index
-        
-        # 1. RSI (6 meses) - Identifica sobrecompra/sobreventa en demanda
-        rsi = ta.momentum.rsi(series, window=rsi_window)
-        for i, idx in enumerate(indices):
-            if f'{target_column}_rsi_{rsi_window}' not in new_features:
-                new_features[f'{target_column}_rsi_{rsi_window}'] = pd.Series(index=df_copy.index, dtype=float)
-            new_features[f'{target_column}_rsi_{rsi_window}'].loc[idx] = rsi.iloc[i] if i < len(rsi) else np.nan
-        
-        # 2. Bollinger Bands (12 meses) - Detecta demanda anómala vs. patrón anual
-        bb_high = ta.volatility.bollinger_hband(series, window=bb_window, window_dev=bb_std)
-        bb_low = ta.volatility.bollinger_lband(series, window=bb_window, window_dev=bb_std)
-        bb_mid = ta.volatility.bollinger_mavg(series, window=bb_window)
-        bb_position = (series - bb_low) / (bb_high - bb_low + 1e-6)
-        
-        for i, idx in enumerate(indices):
-            for feature_name, feature_series in [
-                (f'{target_column}_bb_high_{bb_window}', bb_high),
-                (f'{target_column}_bb_low_{bb_window}', bb_low),
-                (f'{target_column}_bb_mid_{bb_window}', bb_mid),
-                (f'{target_column}_bb_position_{bb_window}', bb_position)
-            ]:
-                if feature_name not in new_features:
-                    new_features[feature_name] = pd.Series(index=df_copy.index, dtype=float)
-                new_features[feature_name].loc[idx] = feature_series.iloc[i] if i < len(feature_series) else np.nan
-        
-        # 3. MACD (3-12 meses) - Detecta cambios de tendencia trimestral vs. anual
-        macd_line = ta.trend.macd(series, window_slow=macd_slow, window_fast=macd_fast)
-        macd_signal_line = ta.trend.macd_signal(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal)
-        macd_histogram = ta.trend.macd_diff(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal)
-        
-        for i, idx in enumerate(indices):
-            for feature_name, feature_series in [
-                (f'{target_column}_macd_line', macd_line),
-                (f'{target_column}_macd_signal', macd_signal_line),
-                (f'{target_column}_macd_histogram', macd_histogram)
-            ]:
-                if feature_name not in new_features:
-                    new_features[feature_name] = pd.Series(index=df_copy.index, dtype=float)
-                new_features[feature_name].loc[idx] = feature_series.iloc[i] if i < len(feature_series) else np.nan
-        
-        # 4. ULCER INDEX (8 meses) - Mide riesgo de caídas sostenidas en demanda
-        ulcer = ta.volatility.ulcer_index(series, window=ulcer_window)
-        
-        for i, idx in enumerate(indices):
-            if f'{target_column}_ulcer_{ulcer_window}' not in new_features:
-                new_features[f'{target_column}_ulcer_{ulcer_window}'] = pd.Series(index=df_copy.index, dtype=float)
-            new_features[f'{target_column}_ulcer_{ulcer_window}'].loc[idx] = ulcer.iloc[i] if i < len(ulcer) else np.nan
-        
-        # 5. KAMA (6 meses) - Media adaptiva que responde a cambios reales vs. ruido
-        kama = KAMAIndicator(close=series, window=kama_window, pow1=kama_pow1, pow2=kama_pow2).kama()
-        
-        for i, idx in enumerate(indices):
-            if f'{target_column}_kama_{kama_window}' not in new_features:
-                new_features[f'{target_column}_kama_{kama_window}'] = pd.Series(index=df_copy.index, dtype=float)
-            new_features[f'{target_column}_kama_{kama_window}'].loc[idx] = kama.iloc[i] if i < len(kama) else np.nan
-            
-        # 6. ADX (6 meses) - Fuerza de tendencia en la demanda
-        high = series * 1.02  # Ajuste más conservador para demanda mensual
-        low = series * 0.98
-        close = series
-        
-        adx = ta.trend.adx(high=high, low=low, close=close, window=6)  # 6 meses
-        
-        for i, idx in enumerate(indices):
-            if f'{target_column}_adx_6' not in new_features:
-                new_features[f'{target_column}_adx_6'] = pd.Series(index=df_copy.index, dtype=float)
-            new_features[f'{target_column}_adx_6'].loc[idx] = adx.iloc[i] if i < len(adx) else np.nan
-        
-        # 7. Stochastic Oscillator (6 meses) - Momentum de demanda
-        stoch_k = ta.momentum.stoch(high=high, low=low, close=close, window=6)  # 6 meses
-        stoch_d = ta.momentum.stoch_signal(high=high, low=low, close=close, window=6)
-        
-        for i, idx in enumerate(indices):
-            for feature_name, feature_series in [
-                (f'{target_column}_stoch_k_6', stoch_k),
-                (f'{target_column}_stoch_d_6', stoch_d)
-            ]:
-                if feature_name not in new_features:
-                    new_features[feature_name] = pd.Series(index=df_copy.index, dtype=float)
-                new_features[feature_name].loc[idx] = feature_series.iloc[i] if i < len(feature_series) else np.nan
-    
-    # Agregar todas las nuevas features al DataFrame
-    for feature_name, feature_series in new_features.items():
-        df_copy[feature_name] = feature_series
-    
-    return df_copy
+
+def process_group_ta(group, params):
+    from ta.momentum import KAMAIndicator
+    import ta
+    target_column = params.get("ta_target_column", "tn")
+    rsi_window = params.get("rsi_window", 6)
+    bb_window = params.get("bollinger_window", 12)
+    bb_std = params.get("bollinger_std", 1.5)
+    macd_fast = params.get("macd_fast", 3)
+    macd_slow = params.get("macd_slow", 12)
+    macd_signal = params.get("macd_signal", 6)
+    ulcer_window = params.get("ulcer_window", 8)
+    kama_window = params.get("kama_window", 6)
+    kama_pow1 = params.get("kama_pow1", 2)
+    kama_pow2 = params.get("kama_pow2", 30)
+
+    series = group[target_column].reset_index(drop=True)
+    result = pd.DataFrame(index=group.index)
+
+    # RSI
+    result[f'{target_column}_rsi_{rsi_window}'] = ta.momentum.rsi(series, window=rsi_window).values
+
+    # Bollinger Bands
+    result[f'{target_column}_bb_high_{bb_window}'] = ta.volatility.bollinger_hband(series, window=bb_window, window_dev=bb_std).values
+    result[f'{target_column}_bb_low_{bb_window}'] = ta.volatility.bollinger_lband(series, window=bb_window, window_dev=bb_std).values
+    result[f'{target_column}_bb_mid_{bb_window}'] = ta.volatility.bollinger_mavg(series, window=bb_window).values
+    bb_high = result[f'{target_column}_bb_high_{bb_window}']
+    bb_low = result[f'{target_column}_bb_low_{bb_window}']
+    result[f'{target_column}_bb_position_{bb_window}'] = (series - bb_low) / (bb_high - bb_low + 1e-6)
+
+    # MACD
+    result[f'{target_column}_macd_line'] = ta.trend.macd(series, window_slow=macd_slow, window_fast=macd_fast).values
+    result[f'{target_column}_macd_signal'] = ta.trend.macd_signal(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal).values
+    result[f'{target_column}_macd_histogram'] = ta.trend.macd_diff(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal).values
+
+    # Ulcer Index
+    result[f'{target_column}_ulcer_{ulcer_window}'] = ta.volatility.ulcer_index(series, window=ulcer_window).values
+
+    # KAMA
+    result[f'{target_column}_kama_{kama_window}'] = KAMAIndicator(close=series, window=kama_window, pow1=kama_pow1, pow2=kama_pow2).kama().values
+
+    # ADX
+    high = series * 1.02
+    low = series * 0.98
+    close = series
+    result[f'{target_column}_adx_6'] = ta.trend.adx(high=high, low=low, close=close, window=6).values
+
+    # Stochastic Oscillator
+    result[f'{target_column}_stoch_k_6'] = ta.momentum.stoch(high=high, low=low, close=close, window=6).values
+    stoch_d = ta.momentum.stoch_signal(high=high, low=low, close=close, window=6)
+    # Si quieres suavizar, descomenta la siguiente línea:
+    # stoch_d = stoch_d.rolling(window=3, min_periods=1).mean()
+    result[f'{target_column}_stoch_d_6'] = stoch_d.values
+
+    return result
+
+def add_technical_analysis_features(df, **params):
+    grouped = df.groupby(['customer_id', 'product_id'])
+    results = Parallel(n_jobs=-1, backend="loky")(
+        delayed(process_group_ta)(group, params) for _, group in grouped
+    )
+    features_df = pd.concat(results)
+    df = df.join(features_df)
+    return df
