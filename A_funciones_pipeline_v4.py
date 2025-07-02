@@ -7,6 +7,7 @@ import numpy as np
 import os
 import warnings
 from scipy.stats import linregress
+from ta.momentum import KAMAIndicator
 
 GCS_BUCKET_PATH = '/home/chidiakmartin/gcs-bucket'
 
@@ -790,12 +791,7 @@ def add_technical_analysis_features(df, **params):
             new_features[f'{target_column}_ulcer_{ulcer_window}'].loc[idx] = ulcer.iloc[i] if i < len(ulcer) else np.nan
         
         # 5. KAMA (6 meses) - Media adaptiva que responde a cambios reales vs. ruido
-        try:
-            import pandas_ta
-            kama = pandas_ta.kama(series, length=kama_window, fast=kama_pow1, slow=kama_pow2)
-        except ImportError:
-            warnings.warn("La librería 'pandas_ta' no está instalada. Instala con: pip install pandas_ta")
-            kama = pd.Series([np.nan] * len(series), index=series.index)
+        kama = KAMAIndicator(close=series, window=kama_window, pow1=kama_pow1, pow2=kama_pow2).kama()
         
         for i, idx in enumerate(indices):
             if f'{target_column}_kama_{kama_window}' not in new_features:
