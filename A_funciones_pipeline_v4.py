@@ -705,6 +705,7 @@ def add_targeted_standardized_features(df, **params):
 def process_group_ta(group, params):
     from ta.momentum import KAMAIndicator
     import ta
+    import numpy as np
     target_column = params.get("ta_target_column", "tn")
     rsi_window = params.get("rsi_window", 6)
     bb_window = params.get("bollinger_window", 12)
@@ -720,40 +721,49 @@ def process_group_ta(group, params):
     series = group[target_column].reset_index(drop=True)
     result = pd.DataFrame(index=group.index)
 
+    n = len(series)
+
+    # Helper to fill with NaN if not enough data
+    def safe_ta(fn, min_len, *args, **kwargs):
+        if n < min_len:
+            return np.full(n, np.nan)
+        try:
+            return fn(*args, **kwargs)
+        except Exception:
+            return np.full(n, np.nan)
+
     # RSI
-    result[f'{target_column}_rsi_{rsi_window}'] = ta.momentum.rsi(series, window=rsi_window).values
+    result[f'{target_column}_rsi_{rsi_window}'] = safe_ta(lambda: ta.momentum.rsi(series, window=rsi_window).values, rsi_window)
 
     # Bollinger Bands
-    result[f'{target_column}_bb_high_{bb_window}'] = ta.volatility.bollinger_hband(series, window=bb_window, window_dev=bb_std).values
-    result[f'{target_column}_bb_low_{bb_window}'] = ta.volatility.bollinger_lband(series, window=bb_window, window_dev=bb_std).values
-    result[f'{target_column}_bb_mid_{bb_window}'] = ta.volatility.bollinger_mavg(series, window=bb_window).values
+    result[f'{target_column}_bb_high_{bb_window}'] = safe_ta(lambda: ta.volatility.bollinger_hband(series, window=bb_window, window_dev=bb_std).values, bb_window)
+    result[f'{target_column}_bb_low_{bb_window}'] = safe_ta(lambda: ta.volatility.bollinger_lband(series, window=bb_window, window_dev=bb_std).values, bb_window)
+    result[f'{target_column}_bb_mid_{bb_window}'] = safe_ta(lambda: ta.volatility.bollinger_mavg(series, window=bb_window).values, bb_window)
     bb_high = result[f'{target_column}_bb_high_{bb_window}']
     bb_low = result[f'{target_column}_bb_low_{bb_window}']
     result[f'{target_column}_bb_position_{bb_window}'] = (series - bb_low) / (bb_high - bb_low + 1e-6)
 
     # MACD
-    result[f'{target_column}_macd_line'] = ta.trend.macd(series, window_slow=macd_slow, window_fast=macd_fast).values
-    result[f'{target_column}_macd_signal'] = ta.trend.macd_signal(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal).values
-    result[f'{target_column}_macd_histogram'] = ta.trend.macd_diff(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal).values
+    result[f'{target_column}_macd_line'] = safe_ta(lambda: ta.trend.macd(series, window_slow=macd_slow, window_fast=macd_fast).values, macd_slow)
+    result[f'{target_column}_macd_signal'] = safe_ta(lambda: ta.trend.macd_signal(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal).values, macd_slow)
+    result[f'{target_column}_macd_histogram'] = safe_ta(lambda: ta.trend.macd_diff(series, window_slow=macd_slow, window_fast=macd_fast, window_sign=macd_signal).values, macd_slow)
 
     # Ulcer Index
-    result[f'{target_column}_ulcer_{ulcer_window}'] = ta.volatility.ulcer_index(series, window=ulcer_window).values
+    result[f'{target_column}_ulcer_{ulcer_window}'] = safe_ta(lambda: ta.volatility.ulcer_index(series, window=ulcer_window).values, ulcer_window)
 
     # KAMA
-    result[f'{target_column}_kama_{kama_window}'] = KAMAIndicator(close=series, window=kama_window, pow1=kama_pow1, pow2=kama_pow2).kama().values
+    result[f'{target_column}_kama_{kama_window}'] = safe_ta(lambda: KAMAIndicator(close=series, window=kama_window, pow1=kama_pow1, pow2=kama_pow2).kama().values, kama_window)
 
     # ADX
     high = series * 1.02
     low = series * 0.98
     close = series
-    result[f'{target_column}_adx_6'] = ta.trend.adx(high=high, low=low, close=close, window=6).values
+    result[f'{target_column}_adx_6'] = safe_ta(lambda: ta.trend.adx(high=high, low=low, close=close, window=6).values, 6)
 
     # Stochastic Oscillator
-    result[f'{target_column}_stoch_k_6'] = ta.momentum.stoch(high=high, low=low, close=close, window=6).values
-    stoch_d = ta.momentum.stoch_signal(high=high, low=low, close=close, window=6)
-    # Si quieres suavizar, descomenta la siguiente línea:
-    # stoch_d = stoch_d.rolling(window=3, min_periods=1).mean()
-    result[f'{target_column}_stoch_d_6'] = stoch_d.values
+    result[f'{target_column}_stoch_k_6'] = safe_ta(lambda: ta.momentum.stoch(high=high, low=low, close=close, window=6).values, 6)
+    stoch_d = safe_ta(lambda: ta.momentum.stoch_signal(high=high, low=low, close=close, window=6).values, 6)
+    result[f'{target_column}_stoch_d_6'] = stoch_d
 
     return result
 
