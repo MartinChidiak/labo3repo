@@ -1,0 +1,119 @@
+Beginning AutoGluon training... Time limit = 3600s
+AutoGluon will save models to 'c:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\RepositorioLabo3\AutogluonModels\ag-20250703_133018'
+=================== System Info ===================
+AutoGluon Version:  1.3.1
+Python Version:     3.9.23
+Operating System:   Windows
+Platform Machine:   AMD64
+Platform Version:   10.0.26100
+CPU Count:          16
+GPU Count:          0
+Memory Avail:       40.07 GB / 63.82 GB (62.8%)
+Disk Space Avail:   305.46 GB / 1906.87 GB (16.0%)
+===================================================
+
+Fitting with arguments:
+{'enable_ensemble': True,
+ 'eval_metric': WQL,
+ 'freq': 'MS',
+ 'hyperparameters': 'default',
+ 'known_covariates_names': [],
+ 'num_val_windows': 2,
+ 'prediction_length': 2,
+ 'quantile_levels': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+ 'random_seed': 123,
+ 'refit_every_n_windows': 1,
+ 'refit_full': False,
+ 'skip_model_selection': False,
+ 'target': 'tn',
+ 'time_limit': 3600,
+ 'verbosity': 2}
+
+train_data with frequency 'IRREG' has been resampled to frequency 'MS'.
+Provided train_data has 22375 rows (NaN fraction=0.1%), 780 time series. Median time series length is 36 (min=4, max=36). 
+	Removing 75 short time series from train_data. Only series with length >= 9 will be used for training.
+	After filtering, train_data has 21916 rows (NaN fraction=0.1%), 705 time series. Median time series length is 36 (min=9, max=36). 
+
+Provided data contains following columns:
+	target: 'tn'
+	past_covariates:
+		categorical:        []
+		continuous (float): ['product_id']
+
+To learn how to fix incorrectly inferred types, please see documentation for TimeSeriesPredictor.fit
+
+AutoGluon will gauge predictive performance using evaluation metric: 'WQL'
+	This metric's sign has been flipped to adhere to being higher_is_better. The metric score can be multiplied by -1 to get the metric value.
+===================================================
+
+Starting training. Start time is 2025-07-03 15:30:24
+Models that will be trained: ['SeasonalNaive', 'RecursiveTabular', 'DirectTabular', 'NPTS', 'DynamicOptimizedTheta', 'AutoETS', 'ChronosZeroShot[bolt_base]', 'ChronosFineTuned[bolt_small]', 'TemporalFusionTransformer', 'DeepAR', 'PatchTST', 'TiDE']
+Training timeseries model SeasonalNaive. Training for up to 276.4s of the 3592.9s of remaining time.
+	-0.2298       = Validation score (-WQL)
+	5.93    s     = Training runtime
+	0.77    s     = Validation (prediction) runtime
+Training timeseries model RecursiveTabular. Training for up to 298.9s of the 3586.2s of remaining time.
+	Time series in the dataset are too short for chosen differences [12]. Setting differences to [1].
+	Time series in the dataset are too short for chosen differences [12]. Setting differences to [1].
+	-0.2285       = Validation score (-WQL)
+	3.38    s     = Training runtime
+	0.10    s     = Validation (prediction) runtime
+Training timeseries model DirectTabular. Training for up to 325.7s of the 3582.7s of remaining time.
+	-0.2436       = Validation score (-WQL)
+	18.54   s     = Training runtime
+	0.15    s     = Validation (prediction) runtime
+Training timeseries model NPTS. Training for up to 356.4s of the 3564.0s of remaining time.
+	-0.2796       = Validation score (-WQL)
+	0.63    s     = Training runtime
+	0.56    s     = Validation (prediction) runtime
+Training timeseries model DynamicOptimizedTheta. Training for up to 395.9s of the 3562.8s of remaining time.
+	-0.2039       = Validation score (-WQL)
+	2.60    s     = Training runtime
+	0.70    s     = Validation (prediction) runtime
+Training timeseries model AutoETS. Training for up to 444.9s of the 3559.5s of remaining time.
+	Warning: AutoETS\W0 failed for 45 time series (6.4%). Fallback model SeasonalNaive was used for these time series.
+	-0.2010       = Validation score (-WQL)
+	3.38    s     = Training runtime
+	3.57    s     = Validation (prediction) runtime
+Training timeseries model ChronosZeroShot[bolt_base]. Training for up to 507.5s of the 3552.6s of remaining time.
+	-0.1905       = Validation score (-WQL)
+	73.49   s     = Training runtime
+	3.97    s     = Validation (prediction) runtime
+Training timeseries model ChronosFineTuned[bolt_small]. Training for up to 579.2s of the 3475.1s of remaining time.
+	Skipping covariate_regressor since the dataset contains no covariates or static features.
+	Fine-tuning on the CPU detected. We recommend using a GPU for faster fine-tuning of Chronos.
+	Saving fine-tuned model to c:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\RepositorioLabo3\AutogluonModels\ag-20250703_133018\models\ChronosFineTuned[bolt_small]\W0\fine-tuned-ckpt
+	Skipping covariate_regressor since the dataset contains no covariates or static features.
+	Fine-tuning on the CPU detected. We recommend using a GPU for faster fine-tuning of Chronos.
+	Saving fine-tuned model to c:\Users\Martin\OneDrive\Maestría\20- Laboratorio3\RepositorioLabo3\AutogluonModels\ag-20250703_133018\models\ChronosFineTuned[bolt_small]\W1\fine-tuned-ckpt
+	-0.1816       = Validation score (-WQL)
+	520.80  s     = Training runtime
+	0.81    s     = Validation (prediction) runtime
+Training timeseries model TemporalFusionTransformer. Training for up to 590.7s of the 2953.5s of remaining time.
+	-0.1845       = Validation score (-WQL)
+	521.10  s     = Training runtime
+	0.56    s     = Validation (prediction) runtime
+Training timeseries model DeepAR. Training for up to 610.6s of the 2431.8s of remaining time.
+	-0.1859       = Validation score (-WQL)
+	174.51  s     = Training runtime
+	0.64    s     = Validation (prediction) runtime
+Training timeseries model PatchTST. Training for up to 828.3s of the 2256.6s of remaining time.
+	-0.1877       = Validation score (-WQL)
+	66.61   s     = Training runtime
+	0.37    s     = Validation (prediction) runtime
+Training timeseries model TiDE. Training for up to 1589.6s of the 2189.6s of remaining time.
+	-0.2371       = Validation score (-WQL)
+	505.26  s     = Training runtime
+	1.10    s     = Validation (prediction) runtime
+Fitting simple weighted ensemble.
+	Ensemble weights: {'AutoETS': 0.17, 'ChronosFineTuned[bolt_small]': 0.05, 'DeepAR': 0.07, 'NPTS': 0.08, 'PatchTST': 0.22, 'SeasonalNaive': 0.05, 'TemporalFusionTransformer': 0.36}
+	-0.1708       = Validation score (-WQL)
+	2.98    s     = Training runtime
+	7.28    s     = Validation (prediction) runtime
+Training complete. Models trained: ['SeasonalNaive', 'RecursiveTabular', 'DirectTabular', 'NPTS', 'DynamicOptimizedTheta', 'AutoETS', 'ChronosZeroShot[bolt_base]', 'ChronosFineTuned[bolt_small]', 'TemporalFusionTransformer', 'DeepAR', 'PatchTST', 'TiDE', 'WeightedEnsemble']
+Total runtime: 1913.79 s
+Best model: WeightedEnsemble
+Best model score: -0.1708
+data with frequency 'IRREG' has been resampled to frequency 'MS'.
+Model not specified in predict, will default to the model with the best validation score: WeightedEnsemble
+	Warning: AutoETS\W1 failed for 46 time series (5.9%). Fallback model SeasonalNaive was used for these time series.
